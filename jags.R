@@ -1,28 +1,31 @@
-# Fits a dynamic (colonization/persistence) occupancy model in JAGS for one
-# configured species, using the detection-history and covariate arrays from
-# jagsPrep.R::build_detection_arrays().
-#
-# Detection probability (p) has always had covariates (jday/bft/eff); this
-# also supports environmental covariates on initial occupancy (psi),
-# persistence (phi), and colonization (gamma) - config-driven, and each
-# process independently gets zero or more covariates, fed by
-# average_covariates.R's per-site/per-season/year arrays.
-#
-# The "each array slice along the 3rd dimension is treated as its own year,
-# with numseasons fixed at 1" structure is unchanged from the original
-# single-species model. Extending this to a true hierarchical multi-species
-# model (fitting all configured species jointly with shared priors) is a
-# deliberately separate follow-up.
-#
-# occ_covariates, if given, is a named list of [num_cells x num_ssn] matrices
-# (e.g. average_covariates()'s return value) - config$covariates$psi/phi/gamma
-# each list which of those names apply to that process. A process with no
-# covariates configured is modeled exactly as it was before this existed
-# (intercept-only); JAGS can't compile a zero-length covariate loop, so the
-# model text is generated per-run rather than being one static model.
-#
-# Returns the jags.parfit() result.
-
+#' Fit the dynamic occupancy model
+#'
+#' Fits a dynamic (colonization/persistence) occupancy model in JAGS for one
+#' configured species, using the detection-history and covariate arrays from
+#' `jagsPrep.R::build_detection_arrays()`.
+#'
+#' Detection probability (`p`) has always had covariates (jday/bft/eff); this
+#' also supports environmental covariates on initial occupancy (`psi`),
+#' persistence (`phi`), and colonization (`gamma`) - config-driven, and each
+#' process independently gets zero or more covariates, fed by
+#' `average_covariates.R`'s per-site/per-season/year arrays.
+#'
+#' The "each array slice along the 3rd dimension is treated as its own year,
+#' with numseasons fixed at 1" structure is unchanged from the original
+#' single-species model. Extending this to a true hierarchical multi-species
+#' model (fitting all configured species jointly with shared priors) is a
+#' deliberately separate follow-up.
+#'
+#' @param arrays the list returned by `build_detection_arrays()`
+#' @param config a config list, as returned by `load_config()`
+#' @param occ_covariates optional named list of `[num_cells x num_ssn]`
+#'   matrices (e.g. `average_covariates()`'s return value). `config$covariates$psi/phi/gamma`
+#'   each list which of those names apply to that process; a process with no
+#'   covariates configured is modeled exactly as it was before this existed
+#'   (intercept-only). JAGS can't compile a zero-length covariate loop, so the
+#'   model text is generated per-run (see `build_whale_model_code()`) rather
+#'   than being one static model.
+#' @return the `jags.parfit()` result (an `mcmc.list`)
 fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   library(R2jags)
   library(rjags)
@@ -170,11 +173,18 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   whale.pars
 }
 
-# Builds the BUGS/JAGS model code for the dynamic occupancy model, with
-# covariate blocks on psi/phi/gamma included only for processes that have
-# n_cov_* > 0 (see the comment on fit_occupancy_model() for why). With
-# n_cov_psi = n_cov_phi = n_cov_gamma = 0, this generates exactly the
-# original intercept-only model.
+#' Generate the BUGS/JAGS model code
+#'
+#' Builds the BUGS/JAGS model code for the dynamic occupancy model, with
+#' covariate blocks on psi/phi/gamma included only for processes that have
+#' `n_cov_* > 0` (see `fit_occupancy_model()`'s documentation for why). With
+#' `n_cov_psi = n_cov_phi = n_cov_gamma = 0`, this generates exactly the
+#' original intercept-only model.
+#'
+#' @param n_cov_psi number of covariates on initial occupancy (`psi`)
+#' @param n_cov_phi number of covariates on persistence (`phi`)
+#' @param n_cov_gamma number of covariates on colonization (`gamma`)
+#' @return character string of BUGS/JAGS model code, ready to `writeLines()` to a `.bug` file
 build_whale_model_code <- function(n_cov_psi, n_cov_phi, n_cov_gamma) {
   # coef_prefix (b/e/g) names the coefficients, matching the existing
   # b.0/e.0/g.0 intercept convention for psi/phi/gamma respectively.

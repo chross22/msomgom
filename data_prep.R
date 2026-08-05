@@ -1,13 +1,17 @@
-# Loads and cleans the vessel survey CSV, ready for spatial gridding in jagsPrep.R.
-#
-# Combines what used to be two separate, drifted implementations
-# (legacy/master.R and the pre-refactor data_prep.R): master.R's GMT -> US/Eastern
-# datetime conversion (more correct near UTC day boundaries than filtering on
-# the raw YEAR/MONTH/DAY columns) plus data_prep.R's BEHAV*-column drop.
-#
-# Returns list(dat = <full cleaned dataset>, tmpdat = <reduced dataset for gridding>,
-#              season_info = list(season = <season lookup table>, num_ssn = <int>)).
-
+#' Load and clean the vessel survey CSV
+#'
+#' Ready for spatial gridding in `jagsPrep.R::build_detection_arrays()`.
+#' Combines what used to be two separate, drifted implementations
+#' (`legacy/master.R` and the pre-refactor `data_prep.R`): master.R's GMT ->
+#' US/Eastern datetime conversion (more correct near UTC day boundaries than
+#' filtering on the raw YEAR/MONTH/DAY columns) plus data_prep.R's
+#' BEHAV*-column drop.
+#'
+#' @param config a config list, as returned by `load_config()`
+#' @return list with:
+#'   \item{dat}{the full cleaned dataset}
+#'   \item{tmpdat}{a reduced dataset with just the columns needed for gridding}
+#'   \item{season_info}{list(season = <season lookup table from `makeSeasons()`>, num_ssn = <int>)}
 prep_survey_data <- function(config) {
   library(dplyr)
   library(readr)

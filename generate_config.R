@@ -1,12 +1,55 @@
-# Programmatically writes a config YAML file into configs/, so multiple runs
-# (different study areas, species, date ranges, MCMC settings, ...) can be
-# kept as separate named files instead of hand-editing one config.yaml.
-#
-# Defaults reproduce the pipeline's original Bay of Fundy / RIWH settings, so
-# generate_config("some_name") with no other arguments is a working config.
-#
-# library(yaml) is required; load_config.R also depends on it.
-
+#' Write a pipeline config YAML file
+#'
+#' Programmatically writes a config YAML file into `configs/`, so multiple
+#' runs (different study areas, species, date ranges, MCMC settings, ...) can
+#' be kept as separate named files instead of hand-editing one `config.yaml`.
+#'
+#' Defaults reproduce the pipeline's original Bay of Fundy / RIWH settings, so
+#' `generate_config("some_name")` with no other arguments is a working config.
+#' Requires the `yaml` package (`load_config.R` also depends on it).
+#'
+#' @param name config name; written to `<configs_dir>/<name>.yaml`
+#' @param configs_dir directory to write the config into
+#' @param overwrite logical; if `FALSE` (the default), errors rather than
+#'   overwriting an existing config with the same `name`
+#' @param project_dir base directory that relative paths in the config resolve against
+#' @param data_file path to the survey CSV, relative to `project_dir` unless absolute
+#' @param google_drive_filename optional; if set and `data_file` is missing,
+#'   `prep_survey_data()` downloads this filename from Google Drive
+#' @param output_dir directory for model outputs, relative to `project_dir` unless absolute
+#' @param platform_code NARWC `PLATFORM` code for the survey vessel (e.g. 99 = R/V Nereid)
+#' @param fileid_prefixes `FILEID` first-letter codes to keep (e.g. `c("P", "p")` for POP shipboard surveys)
+#' @param beg_year first year to include (inclusive)
+#' @param end_year last year to include (inclusive)
+#' @param beg_month first month to include
+#' @param end_month last month to include
+#' @param seasons list of `list(begin = c(month, day), end = c(month, day))`, one per season
+#' @param cell_size grid cell size, in decimal degrees
+#' @param polygon list of `c(lon, lat)` vertices, or an n x 2 matrix/data.frame
+#'   of lon/lat, describing the study-area boundary
+#' @param species_codes species (`SPECCODE`) to build detection-history arrays for
+#' @param active_species which of `species_codes` `fit_occupancy_model()` actually fits this run
+#' @param covariates_psi names of covariates (matching names in the
+#'   `occ_covariates` list passed to `run_occupancy_model()`/`fit_occupancy_model()`)
+#'   to put on initial occupancy. Empty (the default) means occupancy stays
+#'   intercept-only, exactly as before this option existed.
+#' @param covariates_phi as `covariates_psi`, but for persistence
+#' @param covariates_gamma as `covariates_psi`, but for colonization
+#' @param make_figs logical; if `TRUE`, `build_detection_arrays()` saves survey
+#'   maps (requires `mapview`/`tmap`/`webshot`)
+#' @param n_chains number of MCMC chains
+#' @param n_adapt number of JAGS adaptation iterations
+#' @param n_burn number of burn-in iterations
+#' @param n_iter number of sampling iterations (post burn-in)
+#' @param thin thinning interval
+#' @param jags_params `"colext"` (track community-level hyperparameters) or
+#'   `"Z"` (track occupancy states directly)
+#' @param save_results logical; whether `fit_occupancy_model()` saves the fitted `.RData` result
+#' @param run_evaluation logical; whether `run_occupancy_model()` calls `evaluate_occupancy_model()` after fitting
+#' @param save_evaluation_plots logical; whether `evaluate_occupancy_model()` saves trace/density plots
+#' @param cleanup_after_run logical; whether `run_occupancy_model()` calls
+#'   `cleanup_outputs()` after fitting (deletes the downloaded data file and `figs/`)
+#' @return the path the config was written to, invisibly
 generate_config <- function(
   name,
   configs_dir = "configs",

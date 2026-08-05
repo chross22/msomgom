@@ -1,16 +1,27 @@
-# Builds a spatial grid over the configured study area, then fills 3D arrays
-# (site x visit x season) of species detection histories and detection
-# covariates (survey effort, day-of-year, Beaufort sea state) for JAGS.
-#
-# Based on the most complete of what used to be three near-duplicate scripts
-# (legacy/master.R, legacy/real_deal_linestring6.R, and the pre-refactor
-# jagsPrep.R): this one already included dropping surveys whose track never
-# enters the grid, and the make_figs flag.
-#
-# Returns list(species_arrays = named list of one <site x visit x season> array
-#              per configured species code, effort3d, jday3d, bft3d, reps,
-#              max_survs, num_cells, num_ssn, area_grid_sf).
-
+#' Build the spatial grid and detection-history/covariate arrays
+#'
+#' Builds a spatial grid over the configured study area, then fills 3D arrays
+#' (site x visit x season) of species detection histories and detection
+#' covariates (survey effort, day-of-year, Beaufort sea state) for JAGS.
+#'
+#' Based on the most complete of what used to be three near-duplicate scripts
+#' (`legacy/master.R`, `legacy/real_deal_linestring6.R`, and the pre-refactor
+#' `jagsPrep.R`): this one already included dropping surveys whose track
+#' never enters the grid, and the `make_figs` flag.
+#'
+#' @param tmpdat the `tmpdat` data.frame from `prep_survey_data()`
+#' @param season_info the `season_info` list from `prep_survey_data()`
+#' @param config a config list, as returned by `load_config()`
+#' @return list with:
+#'   \item{species_arrays}{named list of one `<site x visit x season>` array per configured species code}
+#'   \item{effort3d}{`<site x visit x season>` array of survey trackline length per grid cell}
+#'   \item{jday3d}{`<site x visit x season>` array of day-of-year}
+#'   \item{bft3d}{`<site x visit x season>` array of mean Beaufort sea state}
+#'   \item{reps}{`<season x site>` matrix of repeat-visit counts}
+#'   \item{max_survs}{maximum number of surveys in any one season}
+#'   \item{num_cells}{number of grid cells (sites)}
+#'   \item{num_ssn}{number of year x season combinations}
+#'   \item{area_grid_sf}{the hex grid, as an `sf` polygon object with a `grid_id` column}
 build_detection_arrays <- function(tmpdat, season_info, config) {
   library(sf)
   library(dplyr)

@@ -1,18 +1,34 @@
-# Evaluates a fitted occupancy model: MCMC convergence diagnostics (Gelman-Rubin
-# Rhat, effective sample size), a posterior parameter summary table, trace/density
-# plots, and (when the model was run with jags.params = "Z") a comparison of
-# naive vs. model-estimated occupancy per year.
-#
-# Does not change or re-derive anything about the model itself (see jags.R) -
-# a real posterior-predictive goodness-of-fit check would need derived nodes
-# added to whale.mod, which is a model-design change, not an evaluation one.
-#
-# Usage:
-#   fit <- fit_occupancy_model(arrays, config)
-#   evaluate_occupancy_model(fit, arrays, config)
-# or, to re-evaluate a previously saved run without re-fitting:
-#   evaluate_occupancy_model("output/mock_test/RIWH.colext.RData", config = config)
-
+#' Evaluate a fitted occupancy model
+#'
+#' Reports MCMC convergence diagnostics (Gelman-Rubin Rhat, effective sample
+#' size), a posterior parameter summary table, trace/density plots, and (when
+#' the model was run with `jags.params = "Z"`) a comparison of naive vs.
+#' model-estimated occupancy per year.
+#'
+#' Does not change or re-derive anything about the model itself (see
+#' `jags.R`) - a real posterior-predictive goodness-of-fit check would need
+#' derived nodes added to `whale.mod`, which is a model-design change, not an
+#' evaluation one.
+#'
+#' @examples
+#' \dontrun{
+#' fit <- fit_occupancy_model(arrays, config)
+#' evaluate_occupancy_model(fit, arrays, config)
+#'
+#' # or, to re-evaluate a previously saved run without re-fitting:
+#' evaluate_occupancy_model("output/mock_test/RIWH.colext.RData", config = config)
+#' }
+#'
+#' @param fit an `mcmc.list` (e.g. from `fit_occupancy_model()`), or a path to
+#'   a saved `.RData` file containing one
+#' @param arrays optional; the list returned by `build_detection_arrays()`.
+#'   Required for the naive-vs-modeled occupancy comparison when `fit` tracked `Z`.
+#' @param config optional; a config list, as returned by `load_config()`.
+#'   Used to resolve `output_dir` and for the naive-vs-modeled occupancy comparison.
+#' @param output_dir directory to save `mcmc_diagnostics.pdf` to; defaults to
+#'   `config$paths$output_dir`, or the working directory if `config` is also `NULL`
+#' @param save_plots logical; whether to save trace/density plots
+#' @return invisibly, `list(parameters = <summary data.frame>, occupancy_comparison = <data.frame or NULL>)`
 evaluate_occupancy_model <- function(fit, arrays = NULL, config = NULL,
                                       output_dir = NULL, save_plots = TRUE) {
   library(coda)
@@ -87,8 +103,13 @@ evaluate_occupancy_model <- function(fit, arrays = NULL, config = NULL,
   invisible(list(parameters = results, occupancy_comparison = occupancy_comparison))
 }
 
-# loads the first mcmc.list found in a saved .RData file (as written by
-# fit_occupancy_model()'s save(whale.pars, file = ...))
+#' Load a saved MCMC fit
+#'
+#' Loads the first `mcmc.list` found in a saved `.RData` file (as written by
+#' `fit_occupancy_model()`'s `save(whale.pars, file = ...)`).
+#'
+#' @param path path to a `.RData` file containing an `mcmc.list`
+#' @return the `mcmc.list` object
 load_mcmc_list <- function(path) {
   if (!file.exists(path)) stop("File not found: ", path)
   e <- new.env()
@@ -98,9 +119,18 @@ load_mcmc_list <- function(path) {
   get(ls(e)[is_mcmc_list][1], envir = e)
 }
 
-# naive occupancy (proportion of sites with >=1 detection, ignoring never-surveyed
-# sites) vs. the model's posterior mean occupancy state (Z), one row per year -
-# mirrors the psi.naive calculation in jags.R so the two are directly comparable.
+#' Compare naive vs. modeled occupancy per year
+#'
+#' Naive occupancy (proportion of sites with >=1 detection, ignoring
+#' never-surveyed sites) vs. the model's posterior mean occupancy state (`Z`),
+#' one row per year - mirrors the `psi.naive` calculation in `jags.R` so the
+#' two are directly comparable. Requires `fit` to have tracked `Z` (i.e. the
+#' model was run with `jags.params = "Z"`).
+#'
+#' @param fit an `mcmc.list` that tracked `Z`
+#' @param arrays the list returned by `build_detection_arrays()`
+#' @param config a config list, as returned by `load_config()`
+#' @return data.frame with columns `year`, `n_sites`, `naive_psi`, `modeled_psi`
 compare_naive_vs_modeled_occupancy <- function(fit, arrays, config) {
   species_code <- config$species$active
   max_survs <- arrays$max_survs

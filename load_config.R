@@ -1,7 +1,15 @@
-# Loads and validates a pipeline config YAML (see configs/*.yaml, generate_config.R),
-# resolving paths and expanding seasons/polygon into the matrix forms
-# makeSeasons()/st_polygon() expect.
-
+#' Load and validate a pipeline config
+#'
+#' Reads a config YAML (see `configs/*.yaml`, `generate_config.R`), resolves
+#' `paths.data_file`/`paths.output_dir` relative to `paths.project_dir`, and
+#' expands `seasons`/`study_area.polygon` into the matrix forms
+#' `makeSeasons()`/`st_polygon()` expect.
+#'
+#' @param path path to a config YAML file
+#' @return the parsed config list, with `paths.project_dir`/`paths.data_file`/
+#'   `paths.output_dir` resolved to absolute paths, plus two derived fields:
+#'   `ssn_beg`/`ssn_end` (matrices for `makeSeasons()`) and
+#'   `study_area$polygon_matrix` (a closed-ring `lon`/`lat` matrix for `st_polygon()`)
 load_config <- function(path) {
   if (!requireNamespace("yaml", quietly = TRUE)) {
     stop("The 'yaml' package is required. Install it with install.packages('yaml').")
@@ -47,6 +55,11 @@ load_config <- function(path) {
   config
 }
 
+#' Check whether a path is absolute
+#'
+#' @param path a file path string
+#' @return logical; `TRUE` if `path` starts with `/`, `~`, or a Windows drive
+#'   letter (e.g. `C:\`)
 isAbsolutePath <- function(path) {
   grepl("^(/|~|[A-Za-z]:[\\\\/])", path)
 }

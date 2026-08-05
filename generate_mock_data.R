@@ -1,26 +1,41 @@
-# Generates a synthetic survey CSV matching the schema data_prep.R expects, so
-# the pipeline can be exercised end-to-end without the real NARWC dataset.
-#
-# Column codes and value ranges are grounded in the NARWC Sightings Database
-# User's Guide (2021 update) rather than guessed, matching what the existing
-# filters in data_prep.R already assume:
-#   - PLATFORM 099 = R/V Nereid (8.A.26)
-#   - FILEID starting P/p = POP shipboard survey (8.A.11); p1 = NEAQ Fundy survey
-#   - LEGTYPE 5 = ship underway, 6 = ship not underway (8.A.20)
-#   - LEGSTAGE 1/2/5 = begin/continue/end watch (8.A.19)
-#   - VISIBLTY >= 2 (n.mi.) or -1 (legacy "clear, >=2nm" flag) (8.A.37)
-#   - BEAUFORT sea state 0-9, "7" meaning "7 or greater" (8.A.3)
-#   - IDREL 3 = definite species ID, 9 = not a sighting (8.A.15)
-#   - CONFIDNC 00-11 confidence-in-count code (8.A.7)
-#   - SPECCODE RIWH/HUWH/FIWH/MIWH/HAPO = right/humpback/fin/minke whale, harbor porpoise (8.A.28)
-#   - TIME/GMT is HHMMSS, 24-hour, now archived in GMT (8.A.36)
-#
-# Builds a handful of synthetic vessel tracks per season/year within the
-# configured study-area polygon, with a mix of on-track position events and
-# interspersed sightings (including some decoy records that should be
-# filtered out: other platforms, non-POP-shipboard FILEIDs) so the pipeline's
-# filters are actually exercised, not just its happy path.
-
+#' Generate a synthetic survey CSV for testing
+#'
+#' Generates a synthetic survey CSV matching the schema `data_prep.R` expects,
+#' so the pipeline can be exercised end-to-end without the real NARWC
+#' dataset.
+#'
+#' Column codes and value ranges are grounded in the NARWC Sightings Database
+#' User's Guide (2021 update) rather than guessed, matching what the existing
+#' filters in `data_prep.R` already assume:
+#' \itemize{
+#'   \item PLATFORM 099 = R/V Nereid (8.A.26)
+#'   \item FILEID starting P/p = POP shipboard survey (8.A.11); p1 = NEAQ Fundy survey
+#'   \item LEGTYPE 5 = ship underway, 6 = ship not underway (8.A.20)
+#'   \item LEGSTAGE 1/2/5 = begin/continue/end watch (8.A.19)
+#'   \item VISIBLTY >= 2 (n.mi.) or -1 (legacy "clear, >=2nm" flag) (8.A.37)
+#'   \item BEAUFORT sea state 0-9, "7" meaning "7 or greater" (8.A.3)
+#'   \item IDREL 3 = definite species ID, 9 = not a sighting (8.A.15)
+#'   \item CONFIDNC 00-11 confidence-in-count code (8.A.7)
+#'   \item SPECCODE RIWH/HUWH/FIWH/MIWH/HAPO = right/humpback/fin/minke whale, harbor porpoise (8.A.28)
+#'   \item TIME/GMT is HHMMSS, 24-hour, now archived in GMT (8.A.36)
+#' }
+#'
+#' Builds a handful of synthetic vessel tracks per season/year within the
+#' configured study-area polygon, with a mix of on-track position events and
+#' interspersed sightings (including some decoy records that should be
+#' filtered out: other platforms, non-POP-shipboard FILEIDs) so the
+#' pipeline's filters are actually exercised, not just its happy path.
+#'
+#' @param config_path path to a config YAML file (see `load_config()`); used
+#'   for the study-area polygon, date range, and species codes
+#' @param out_path where to write the CSV; defaults to `config$paths$data_file`
+#' @param surveys_per_season number of synthetic vessel surveys per season/year
+#' @param points_per_survey number of position fixes per survey (~5-minute intervals)
+#' @param sighting_probability probability of a sighting record after each position fix
+#' @param decoy_fraction fraction of records duplicated as decoys (wrong
+#'   platform or non-POP-shipboard FILEID) that the pipeline's filters should drop
+#' @param seed random seed, for reproducible mock data
+#' @return the path the CSV was written to, invisibly
 generate_mock_data <- function(config_path, out_path = NULL,
                                 surveys_per_season = 3,
                                 points_per_survey = 14,
