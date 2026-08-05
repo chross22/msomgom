@@ -1,0 +1,66 @@
+paths:
+  project_dir: '.'
+  data_file: data/survey_data.csv
+  google_drive_filename: ~
+  output_dir: output
+survey:
+  platform_code: 99
+  fileid_prefixes:
+  - P
+  - p
+dates:
+  beg_year: 1988
+  end_year: 2020
+  beg_month: 8
+  end_month: 9
+seasons:
+- begin:
+  - 8
+  - 1
+  end:
+  - 8
+  - 31
+- begin:
+  - 9
+  - 1
+  end:
+  - 9
+  - 30
+study_area:
+  cell_size: 0.05
+  polygon:
+  - - -66.45
+    - 44.82
+  - - -66.28
+    - 44.78
+  - - -66.28
+    - 44.67
+  - - -66.37
+    - 44.55
+  - - -66.5
+    - 44.48
+  - - -66.62
+    - 44.48
+  - - -66.62
+    - 44.7
+  - - -66.45
+    - 44.82
+species:
+  codes:
+  - RIWH
+  active: RIWH
+output:
+  make_figs: no
+jags:
+  n_chains: 3
+  n_adapt: 5000
+  n_burn: 5000
+  n_iter: 20000
+  thin: 1
+  params: colext
+  save_results: yes
+evaluation:
+  run_after_fit: yes
+  save_plots: yes
+cleanup:
+  run_after_model: no

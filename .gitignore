@@ -1,0 +1,14 @@
+# local tooling / OS cruft
+.claude/
+.DS_Store
+
+# R session artifacts
+.Rhistory
+.Rdata
+.RData
+.Rproj.user/
+
+# survey data and model outputs - regenerate via generate_mock_data.R / main.R,
+# and real survey data shouldn't be committed (see NARWC data-sharing terms)
+data/
+output/
