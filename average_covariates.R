@@ -160,8 +160,8 @@ average_covariates <- function(env_dat, area_grid_sf, windows, vars = NULL) {
     if (nrow(pts) == 0) next
 
     for (v in vars) {
-      cell_means <- pts %>%
-        group_by(grid_id) %>%
+      cell_means <- pts |>
+        group_by(grid_id) |>
         summarise(mean_val = mean(.data[[v]], na.rm = TRUE), .groups = "drop")
       out[[v]][cell_means$grid_id, w] <- cell_means$mean_val
     }

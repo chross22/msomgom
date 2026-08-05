@@ -48,20 +48,20 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
 
   ## remove surveys that did not go into the grid defined above
   union_area_grid <- st_union(area_grid)
-  tracks <- tmpdat_sf %>%
-    group_by(FILEID) %>%
-    arrange(FILEID, EVENTNO) %>%
-    summarise(do_union = FALSE) %>%
+  tracks <- tmpdat_sf |>
+    group_by(FILEID) |>
+    arrange(FILEID, EVENTNO) |>
+    summarise(do_union = FALSE) |>
     st_cast("LINESTRING")
   tracks$intersection <- st_intersects(union_area_grid, tracks, sparse = FALSE)[1, ]
   IN_fileids <- tracks$FILEID[tracks$intersection]
-  tmpdat_sf <- tmpdat_sf %>%
+  tmpdat_sf <- tmpdat_sf |>
     filter(FILEID %in% IN_fileids)
   rm(tracks, IN_fileids)
 
   # To sf and add grid ID
   area_grid_sf <- st_sf(area_grid)
-  area_grid_sf <- area_grid_sf %>%
+  area_grid_sf <- area_grid_sf |>
     mutate(grid_id = 1:length(lengths(area_grid)))
   num_cells <- dim(area_grid_sf)[1]
   print(num_cells)
@@ -121,9 +121,9 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
       tmpdat_sf_season_survey_grid <- st_intersects(area_grid_sf, tmpdat_sf_season_survey)
 
       ## calculate effort using linestrings
-      nereid_tracks <- tmpdat_sf_season_survey %>%
-        arrange(FILEID, EVENTNO) %>%
-        summarise(do_union = FALSE) %>%
+      nereid_tracks <- tmpdat_sf_season_survey |>
+        arrange(FILEID, EVENTNO) |>
+        summarise(do_union = FALSE) |>
         st_cast("LINESTRING")
 
       if (make_figs) {
@@ -136,12 +136,18 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
         mapshot(survey_map, url = html_fl)
       }
 
-      # intersect grid with survey trackline (linestring), calculate and store trackline length in each grid cell
-      intersection <- st_intersection(area_grid_sf, nereid_tracks) %>%
-        mutate(total_length = st_length(.)) %>%
-        mutate(total_length_km = as.numeric(total_length) * 0.001) %>%
+      # intersect grid with survey trackline (linestring), calculate and store trackline length in each grid cell.
+      # st_length() needs the sf object itself, not a column, so this can't
+      # be a single pipe chain the way it could with magrittr's `.` - base
+      # R's |> placeholder (_) only works as a direct named argument, not
+      # nested inside another call like st_length(_) would be here.
+      grid_x_track <- st_intersection(area_grid_sf, nereid_tracks)
+      intersection <- grid_x_track |>
+        mutate(total_length = st_length(grid_x_track)) |>
+        mutate(total_length_km = as.numeric(total_length) * 0.001) |>
         group_by(grid_id)
-      effort_joined <- area_grid_sf %>%
+      rm(grid_x_track)
+      effort_joined <- area_grid_sf |>
         left_join(st_drop_geometry(intersection), by = "grid_id")
       effort[, j + 2] <- effort_joined$total_length_km
       rm(effort_joined, intersection, nereid_tracks)

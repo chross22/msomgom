@@ -53,17 +53,17 @@ prep_survey_data <- function(config) {
   )
 
   # drop behavior columns (BEHAV1-BEHAV15); not used by this pipeline
-  dat <- dat %>%
+  dat <- dat |>
     dplyr::select(-starts_with("BEHAV", ignore.case = FALSE, vars = NULL))
 
   # restrict to the configured survey vessel
-  dat <- dat %>%
+  dat <- dat |>
     filter(PLATFORM == config$survey$platform_code)
 
   # keep only the configured survey types (FILEID's first character), e.g. "P"/"p" for POP shipboard surveys
-  dat <- dat %>%
-    mutate(fileid_prefix = str_sub(FILEID, start = 1, end = 1)) %>%
-    filter(fileid_prefix %in% unlist(config$survey$fileid_prefixes)) %>%
+  dat <- dat |>
+    mutate(fileid_prefix = str_sub(FILEID, start = 1, end = 1)) |>
+    filter(fileid_prefix %in% unlist(config$survey$fileid_prefixes)) |>
     dplyr::select(-fileid_prefix)
 
   # convert the survey's GMT time-of-day (HHMMSS) + date into a real US/Eastern datetime.
@@ -84,9 +84,9 @@ prep_survey_data <- function(config) {
   dat$MONTH_ET <- as.numeric(format(dat$datetime_ET, "%m"))
 
   # keep only desired years and months (based on US/Eastern local time)
-  dat <- dat %>%
+  dat <- dat |>
     filter(YEAR_ET >= config$dates$beg_year & YEAR_ET <= config$dates$end_year)
-  dat <- dat %>%
+  dat <- dat |>
     filter(MONTH_ET == config$dates$beg_month | MONTH_ET == config$dates$end_month)
 
   # create seasons matrix, and assign each record its season (based on US/Eastern local time)
@@ -105,7 +105,7 @@ prep_survey_data <- function(config) {
   }
 
   # flag on/off-effort records
-  dat <- dat %>%
+  dat <- dat |>
     mutate(on.off.eff = if_else((BEAUFORT <= 6 & # normally require sea state 0-3, but sea state will be covariate on detection in this model
                                    (
                                      (LEGTYPE == 5 & (LEGSTAGE == 1 | LEGSTAGE == 2 | LEGSTAGE == 5)) | # start, continue, end watch while ship not underway
@@ -114,7 +114,7 @@ prep_survey_data <- function(config) {
                                    (VISIBLTY >= 2 | VISIBLTY == -1) & # VISIBLTY >=2 or -1 indicates visibility of at least 2 nautical miles
                                    (IDREL == 3 | is.na(IDREL)) # if there is a sighting, IDREL must = 3. If no sighting, IDREL should be NA
     ),
-    1, 0)) %>%
+    1, 0)) |>
     # replace all NA with 0 because those are off-effort
     mutate(on.off.eff = ifelse(is.na(on.off.eff), 0, on.off.eff))
 
@@ -129,7 +129,7 @@ prep_survey_data <- function(config) {
                  "date_ymd", "date_jday",
                  "on.off.eff",
                  "season", "season_grpd")
-  tmpdat <- dat %>%
+  tmpdat <- dat |>
     dplyr::select(all_of(keep.cols))
 
   list(
