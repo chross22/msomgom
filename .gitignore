@@ -12,3 +12,6 @@
 # and real survey data shouldn't be committed (see NARWC data-sharing terms)
 data/
 output/
+
+# archived pre-refactor scripts, kept locally for reference only
+legacy/
