@@ -56,7 +56,8 @@ install.packages(c(
 
 `mapview`, `tmap`, and `webshot` are only needed if you set `output.make_figs: true`
 in a config; `googledrive` is only needed if you set `paths.google_drive_filename`.
-Neither is required for a normal run.
+Neither is required for a normal run. `terra` is only needed for
+[`average_covariates.R`](#environmental-covariates) (`install.packages("terra")`).
 
 ## Usage
 
@@ -143,6 +144,39 @@ posterior), trace/density plots saved to `<output_dir>/mcmc_diagnostics.pdf`, an
 when the model was run with `jags.params: Z`, a naive-vs-modeled occupancy
 comparison per year.
 
+### Environmental covariates
+
+`whale.mod` (in `jags.R`) currently only puts environmental covariates on
+detection probability (day-of-year, sea state, effort) - occupancy, persistence,
+and colonization are intercept-only. Wiring covariates into those three
+processes is a separate, still-pending piece of work; `average_covariates.R`
+covers the data-prep half of that: turning daily environmental rasters into the
+per-site, per-season/year arrays that step will need.
+
+It's designed to work directly with the output of
+[`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch) (an `sf`
+point object per day, tagged with YEAR/MONTH/DAY), or with a folder of local
+daily NetCDF files via `load_covariate_netcdf()` if you already have files on
+disk instead. Either way, `average_covariates()` spatially averages onto this
+pipeline's hex grid and temporally averages over whatever windows you give it:
+
+```r
+source("load_config.R"); source("average_covariates.R")
+config <- load_config("configs/bof_riwh.yaml")
+
+# tied to the occupancy model's own season/year structure
+windows <- season_windows_from_config(config)
+# or arbitrary fixed-interval windows, independent of any occupancy config
+# windows <- regular_windows("2018-01-01", "2020-12-31", by = "1 month")
+
+env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
+# area_grid_sf comes from a prior build_detection_arrays() call, so the grid matches exactly
+sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
+# sst_avg$sst is a [num_cells x num_ssn] matrix, same num_ssn indexing as
+# effort3d/jday3d/bft3d, so it reshapes into a [site, season, year] array the
+# same way jags.R's dets4d/bft4d/etc. already do
+```
+
 ## Data
 
 This pipeline expects a CSV in the [NARWC Sightings
@@ -158,6 +192,7 @@ configs/                 # one YAML config per run (see generate_config.R)
 load_config.R             # load_config(path) -> validated config list
 generate_config.R         # generate_config(name, ...) -> writes configs/<name>.yaml
 generate_mock_data.R      # synthetic survey CSV for testing, no real data needed
+average_covariates.R      # spatial/temporal averaging of environmental covariates onto the grid
 padstr0.R                 # zero-pads GMT time-of-day values
 makeSeasons.R             # builds the season lookup table from config date ranges
 data_prep.R               # prep_survey_data(config) -> cleaned survey data
