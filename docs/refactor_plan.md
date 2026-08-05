@@ -155,6 +155,34 @@ Anyone re-running this on the real survey data should use `configs/bof_riwh.yaml
 (or a config generated for their own study area/species) with real MCMC settings,
 not the fast mock-data settings in `configs/mock_test.yaml`.
 
+## Environmental covariates on occupancy/persistence/colonization
+
+A later follow-up: `whale.mod` originally only put covariates on detection
+probability (jday/bft/eff). `average_covariates.R` (see above) preps
+environmental data onto the grid; `jags.R`'s `whale.mod` now also supports
+covariates on `psi`/`phi`/`gamma`, each independently, config-driven via
+`covariates.psi/phi/gamma` + an `occ_covariates` argument to
+`run_occupancy_model()`/`fit_occupancy_model()`.
+
+The model can't stay a single static R function for this: JAGS won't compile
+a `for (c in 1:n.cov)` loop or `inprod()` call over a zero-length covariate
+set (confirmed by testing directly against JAGS - it errors with "Unknown
+variable" rather than treating it as a no-op, unlike a real BUGS `for` loop
+with a>b which genuinely does run zero times). So a process with no
+covariates configured needs its covariate block left out of the model text
+entirely, not just zeroed out in the data. `build_whale_model_code()`
+generates the BUGS code per run accordingly; with no covariates configured
+anywhere, it generates exactly the original intercept-only model.
+
+Verified: the zero-covariate case still produces the same 7 tracked
+parameters as before this existed (regression-tested against
+`configs/mock_test.yaml`); a mixed case (covariates on psi and phi, none on
+gamma, via synthetic SST data) correctly adds `mu.b.cov` (psi) and `mu.e.cov`
+(phi) to the tracked parameters while `mu.g.cov` correctly doesn't appear;
+and a differing-covariate-count-per-process case (psi=1, phi=2, gamma=1)
+compiles and samples correctly in JAGS directly, confirming the per-process
+`n.cov.psi`/`n.cov.phi`/`n.cov.gamma` naming doesn't collide.
+
 ## Full plan
 
 See the original approved plan for the complete config schema and verification steps:

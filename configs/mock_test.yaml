@@ -49,6 +49,10 @@ species:
   codes:
   - RIWH
   active: RIWH
+covariates:
+  psi: []
+  phi: []
+  gamma: []
 output:
   make_figs: no
 jags:

@@ -146,19 +146,24 @@ comparison per year.
 
 ### Environmental covariates
 
-`whale.mod` (in `jags.R`) currently only puts environmental covariates on
-detection probability (day-of-year, sea state, effort) - occupancy, persistence,
-and colonization are intercept-only. Wiring covariates into those three
-processes is a separate, still-pending piece of work; `average_covariates.R`
-covers the data-prep half of that: turning daily environmental rasters into the
-per-site, per-season/year arrays that step will need.
+`whale.mod` (in `jags.R`) puts environmental covariates on detection
+probability (day-of-year, sea state, effort), and optionally on initial
+occupancy (`psi`), persistence (`phi`), and colonization (`gamma`) too - each
+process independently gets zero or more named covariates, chosen per config.
+A process with none configured stays intercept-only, exactly as if this
+didn't exist; a config with no `covariates:` section at all behaves
+identically to before this feature was added.
 
-It's designed to work directly with the output of
-[`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch) (an `sf`
-point object per day, tagged with YEAR/MONTH/DAY), or with a folder of local
-daily NetCDF files via `load_covariate_netcdf()` if you already have files on
-disk instead. Either way, `average_covariates()` spatially averages onto this
-pipeline's hex grid and temporally averages over whatever windows you give it:
+The two steps: prep the covariate data (`average_covariates.R`), then pass it
+into a run (`covariates.psi/phi/gamma` in the config + the `occ_covariates`
+argument).
+
+**1. Prep covariate data.** `average_covariates()` works directly with the
+output of [`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch)
+(an `sf` point object per day, tagged with YEAR/MONTH/DAY), or with a folder
+of local daily NetCDF files via `load_covariate_netcdf()` if you already have
+files on disk instead. Either way, it spatially averages onto this pipeline's
+hex grid and temporally averages over whatever windows you give it:
 
 ```r
 source("load_config.R"); source("average_covariates.R")
@@ -173,9 +178,34 @@ env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 # area_grid_sf comes from a prior build_detection_arrays() call, so the grid matches exactly
 sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 # sst_avg$sst is a [num_cells x num_ssn] matrix, same num_ssn indexing as
-# effort3d/jday3d/bft3d, so it reshapes into a [site, season, year] array the
-# same way jags.R's dets4d/bft4d/etc. already do
+# effort3d/jday3d/bft3d
 ```
+
+**2. Configure and run.** List which covariate names (matching names in
+`occ_covariates`, e.g. `sst_avg` above) apply to which process, then pass the
+covariate list into `run_occupancy_model()`:
+
+```r
+source("generate_config.R")
+generate_config("my_run", covariates_psi = c("sst"), covariates_phi = c("sst"))
+# -> configs/my_run.yaml has covariates: { psi: [sst], phi: [sst], gamma: [] }
+
+source("main.R")
+result <- run_occupancy_model("configs/my_run.yaml", occ_covariates = list(sst = sst_avg$sst))
+result$evaluation$parameters # now includes mu.b.cov (psi) and mu.e.cov (phi)
+```
+
+Each process can take a different number of covariates (or none), including a
+different set of covariate names entirely - `covariates.gamma` above is empty,
+so colonization stays intercept-only while occupancy and persistence both get
+`sst`. Internally, since JAGS can't compile a covariate loop of length zero,
+the model's BUGS code is generated per run (`build_whale_model_code()` in
+`jags.R`) rather than being one static model, so each process's covariate
+block is included only when that process actually has covariates.
+
+Extending this further - to a true hierarchical multi-species model that fits
+all configured species jointly with shared priors - is a deliberately
+separate, larger follow-up.
 
 ## Data
 

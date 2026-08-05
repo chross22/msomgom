@@ -2,16 +2,28 @@
 # configured species, using the detection-history and covariate arrays from
 # jagsPrep.R::build_detection_arrays().
 #
-# The model itself (whale.mod below) and its "each array slice along the 3rd
-# dimension is treated as its own year, with numseasons fixed at 1" structure
-# are unchanged from the original single-species model - only the species
-# selection, MCMC settings, and output path are config-driven. Extending this
-# to a true hierarchical multi-species model (fitting all configured species
-# jointly with shared priors) is a deliberately separate follow-up.
+# Detection probability (p) has always had covariates (jday/bft/eff); this
+# also supports environmental covariates on initial occupancy (psi),
+# persistence (phi), and colonization (gamma) - config-driven, and each
+# process independently gets zero or more covariates, fed by
+# average_covariates.R's per-site/per-season/year arrays.
+#
+# The "each array slice along the 3rd dimension is treated as its own year,
+# with numseasons fixed at 1" structure is unchanged from the original
+# single-species model. Extending this to a true hierarchical multi-species
+# model (fitting all configured species jointly with shared priors) is a
+# deliberately separate follow-up.
+#
+# occ_covariates, if given, is a named list of [num_cells x num_ssn] matrices
+# (e.g. average_covariates()'s return value) - config$covariates$psi/phi/gamma
+# each list which of those names apply to that process. A process with no
+# covariates configured is modeled exactly as it was before this existed
+# (intercept-only); JAGS can't compile a zero-length covariate loop, so the
+# model text is generated per-run rather than being one static model.
 #
 # Returns the jags.parfit() result.
 
-fit_occupancy_model <- function(arrays, config) {
+fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   library(R2jags)
   library(rjags)
   library(dclone) # built-in functionality for parallel MCMC with jags via jags.parfit()
@@ -57,6 +69,33 @@ fit_occupancy_model <- function(arrays, config) {
   jday4d <- array(dim = dim(y.array), data = as.vector(jday.st))
   eff4d <- array(dim = dim(y.array), data = as.vector(eff.st))
 
+  ############## Occupancy-process (psi/phi/gamma) covariates #####################
+
+  process_covariate_array <- function(process_name) {
+    cov_names <- unlist(config$covariates[[process_name]])
+    if (is.null(cov_names) || length(cov_names) == 0) {
+      return(list(n_cov = 0, array = NULL))
+    }
+    missing_names <- setdiff(cov_names, names(occ_covariates))
+    if (length(missing_names) > 0) {
+      stop("config$covariates$", process_name, " references covariate(s) not found in occ_covariates: ",
+           paste(missing_names, collapse = ", "))
+    }
+    n_cov <- length(cov_names)
+    out <- array(dim = c(n.site, n.season, n.year, n_cov))
+    for (c_idx in seq_len(n_cov)) {
+      mat <- occ_covariates[[cov_names[c_idx]]] # [num_cells x num_ssn]
+      mat.st <- (mat - mean(mat, na.rm = TRUE)) / sd(mat, na.rm = TRUE)
+      mat.st[is.na(mat.st)] <- 0
+      out[, , , c_idx] <- array(dim = c(n.site, n.season, n.year), data = as.vector(mat.st))
+    }
+    list(n_cov = n_cov, array = out)
+  }
+
+  psi_cov <- process_covariate_array("psi")
+  phi_cov <- process_covariate_array("phi")
+  gamma_cov <- process_covariate_array("gamma")
+
   ############## JAGS Model & Run #####################
 
   jags.data <- list(y = dets4d,
@@ -68,6 +107,12 @@ fit_occupancy_model <- function(arrays, config) {
                      n.visit = n.visit,
                      n.year = n.year
   )
+  if (psi_cov$n_cov > 0) jags.data$cov.psi <- psi_cov$array
+  if (phi_cov$n_cov > 0) jags.data$cov.phi <- phi_cov$array
+  if (gamma_cov$n_cov > 0) jags.data$cov.gamma <- gamma_cov$array
+  if (psi_cov$n_cov > 0) jags.data$n.cov.psi <- psi_cov$n_cov
+  if (phi_cov$n_cov > 0) jags.data$n.cov.phi <- phi_cov$n_cov
+  if (gamma_cov$n_cov > 0) jags.data$n.cov.gamma <- gamma_cov$n_cov
 
   psi.naive <- table(apply(dets4d, c(1, 3, 4), max, na.rm = TRUE))[3] / (table(apply(dets4d, c(1, 3, 4), max, na.rm = TRUE))[3] + table(apply(dets4d, c(1, 3, 4), max, na.rm = TRUE))[2])
   z.naive <- apply(dets4d, MARGIN = c(1, 3, 4), max, na.rm = TRUE)
@@ -75,78 +120,15 @@ fit_occupancy_model <- function(arrays, config) {
   inits <- list(Z = z.naive)
 
   ##### Model specification #####
-
-  whale.mod <- function() {
-
-    ## Priors
-
-    # Priors on annual random effects
-    mu.b.0 ~ dnorm(0, 0.1)
-    tau.b.0 ~ dgamma(0.1, 0.1)
-
-    mu.a.0 ~ dnorm(0, 0.1)
-    tau.a.0 ~ dgamma(0.1, 0.1)
-
-    mu.a.bft ~ dnorm(0, 0.1)
-    tau.a.bft ~ dgamma(0.1, 0.1)
-
-    mu.a.jday ~ dnorm(0, 0.1)
-    tau.a.jday ~ dgamma(0.1, 0.1)
-
-    mu.a.eff ~ dnorm(0, 0.1)
-    tau.a.eff ~ dgamma(0.1, 0.1)
-
-    mu.g.0 ~ dnorm(0, 0.1)
-    tau.g.0 ~ dgamma(0.1, 0.1)
-
-    mu.e.0 ~ dnorm(0, 0.1)
-    tau.e.0 ~ dgamma(0.1, 0.1)
-
-    ### Hierarchically loop over each year
-    for (t in 1:n.year) {
-
-      # Year-specific hierarchical effects
-      b.0[t] ~ dnorm(mu.b.0, tau.b.0)
-      a.0[t] ~ dnorm(mu.a.0, tau.a.0)
-      a.jday[t] ~ dnorm(mu.a.jday, tau.a.jday)
-      a.bft[t] ~ dnorm(mu.a.bft, tau.a.bft)
-      a.eff[t] ~ dnorm(mu.a.eff, tau.a.eff)
-
-      g.0[t] ~ dnorm(mu.g.0, tau.g.0)
-      e.0[t] ~ dnorm(mu.e.0, tau.e.0)
-
-      ### Process & Observation model of points
-      for (j in 1:n.site) {
-
-        # Occupancy for season 1 in each year, but no covariates here
-        logit(psi[j, 1, t]) <- b.0[t]
-        Z[j, 1, t] ~ dbin(psi[j, 1, t], 1)
-
-        # Detectability for season 1 in each year
-        for (k in 1:n.visit) {
-          logit(p[j, k, 1, t]) <- a.0[t] + a.jday[t] * jday[j, k, 1, t] + a.bft[t] * bft[j, k, 1, t] + a.eff[t] * eff[j, k, 1, t]
-          mu.p[j, k, 1, t] <- p[j, k, 1, t] * Z[j, 1, t]
-          y[j, k, 1, t] ~ dbin(mu.p[j, k, 1, t], 1)
-        }
-
-        # Colonization & persistence for seasons 2-N in each year
-        for (l in 2:n.season) {
-
-          logit(phi[j, l - 1, t]) <- e.0[t]
-          logit(gamma[j, l - 1, t]) <- g.0[t]
-          psi[j, l, t] <- phi[j, l - 1, t] * Z[j, l - 1, t] + gamma[j, l - 1, t] * (1 - Z[j, l - 1, t])
-          Z[j, l, t] ~ dbin(psi[j, l, t], 1)
-
-          # Detectability for seasons 2-N in each year
-          for (k in 1:n.visit) {
-            logit(p[j, k, l, t]) <- a.0[t] + a.jday[t] * jday[j, k, l, t] + a.bft[t] * bft[j, k, l, t] + a.eff[t] * eff[j, k, l, t]
-            mu.p[j, k, l, t] <- p[j, k, l, t] * Z[j, l, t]
-            y[j, k, l, t] ~ dbin(mu.p[j, k, l, t], 1)
-          }
-        }
-      }
-    }
-  }
+  # Generated as text rather than a static R function: JAGS can't compile a
+  # for-loop/inprod() over a zero-length covariate dimension (confirmed by
+  # testing - it errors with "Unknown variable" rather than treating a
+  # 1:0-length loop as a no-op), so a process with no configured covariates
+  # needs its covariate block omitted from the model text entirely, not just
+  # zeroed out in the data.
+  model_code <- build_whale_model_code(psi_cov$n_cov, phi_cov$n_cov, gamma_cov$n_cov)
+  model_file <- tempfile(fileext = ".bug")
+  writeLines(model_code, model_file)
 
   nc <- config$jags$n_chains
   n.adapt <- config$jags$n_adapt
@@ -157,6 +139,9 @@ fit_occupancy_model <- function(arrays, config) {
   parSelect <- config$jags$params
   if (parSelect == "colext") {
     pars <- c("mu.b.0", "mu.a.0", "mu.a.jday", "mu.a.bft", "mu.a.eff", "mu.g.0", "mu.e.0")
+    if (psi_cov$n_cov > 0) pars <- c(pars, "mu.b.cov")
+    if (phi_cov$n_cov > 0) pars <- c(pars, "mu.e.cov")
+    if (gamma_cov$n_cov > 0) pars <- c(pars, "mu.g.cov")
   } else if (parSelect == "Z") {
     pars <- c("Z")
   }
@@ -167,7 +152,7 @@ fit_occupancy_model <- function(arrays, config) {
   tmp <- clusterEvalQ(cl, library(dclone))
   parLoadModule(cl, "glm")
   parListModules(cl)
-  whale.pars <- jags.parfit(cl, jags.data, params = pars, whale.mod, inits = inits, n.chains = nc,
+  whale.pars <- jags.parfit(cl, jags.data, params = pars, model_file, inits = inits, n.chains = nc,
                             n.adapt = n.adapt, n.update = n.burn, thin = thin, n.iter = n.iter)
   stopCluster(cl)
   end.time <- Sys.time()
@@ -183,4 +168,128 @@ fit_occupancy_model <- function(arrays, config) {
   }
 
   whale.pars
+}
+
+# Builds the BUGS/JAGS model code for the dynamic occupancy model, with
+# covariate blocks on psi/phi/gamma included only for processes that have
+# n_cov_* > 0 (see the comment on fit_occupancy_model() for why). With
+# n_cov_psi = n_cov_phi = n_cov_gamma = 0, this generates exactly the
+# original intercept-only model.
+build_whale_model_code <- function(n_cov_psi, n_cov_phi, n_cov_gamma) {
+  # coef_prefix (b/e/g) names the coefficients, matching the existing
+  # b.0/e.0/g.0 intercept convention for psi/phi/gamma respectively.
+  # process (psi/phi/gamma) names the n.cov.<process>/cov.<process> data
+  # arrays, matching how fit_occupancy_model() builds jags.data.
+  cov_priors <- function(n_cov, coef_prefix, process) {
+    if (n_cov == 0) return("")
+    sprintf("
+    for (c in 1:n.cov.%s) {
+      mu.%s.cov[c] ~ dnorm(0, 0.1)
+      tau.%s.cov[c] ~ dgamma(0.1, 0.1)
+    }", process, coef_prefix, coef_prefix)
+  }
+  cov_year_effects <- function(n_cov, coef_prefix, process) {
+    if (n_cov == 0) return("")
+    sprintf("
+      for (c in 1:n.cov.%s) {
+        %s.cov[t, c] ~ dnorm(mu.%s.cov[c], tau.%s.cov[c])
+      }", process, coef_prefix, coef_prefix, coef_prefix)
+  }
+  cov_term <- function(n_cov, coef_prefix, process, season_index) {
+    if (n_cov == 0) return("")
+    sprintf(" + inprod(%s.cov[t, 1:n.cov.%s], cov.%s[j, %s, t, 1:n.cov.%s])",
+            coef_prefix, process, process, season_index, process)
+  }
+
+  psi_priors <- cov_priors(n_cov_psi, "b", "psi")
+  phi_priors <- cov_priors(n_cov_phi, "e", "phi")
+  gamma_priors <- cov_priors(n_cov_gamma, "g", "gamma")
+
+  psi_year <- cov_year_effects(n_cov_psi, "b", "psi")
+  phi_year <- cov_year_effects(n_cov_phi, "e", "phi")
+  gamma_year <- cov_year_effects(n_cov_gamma, "g", "gamma")
+
+  psi_term <- cov_term(n_cov_psi, "b", "psi", "1")
+  phi_term <- cov_term(n_cov_phi, "e", "phi", "l - 1")
+  gamma_term <- cov_term(n_cov_gamma, "g", "gamma", "l - 1")
+
+  sprintf('
+model {
+
+  ## Priors
+
+  # Priors on annual random effects
+  mu.b.0 ~ dnorm(0, 0.1)
+  tau.b.0 ~ dgamma(0.1, 0.1)
+
+  mu.a.0 ~ dnorm(0, 0.1)
+  tau.a.0 ~ dgamma(0.1, 0.1)
+
+  mu.a.bft ~ dnorm(0, 0.1)
+  tau.a.bft ~ dgamma(0.1, 0.1)
+
+  mu.a.jday ~ dnorm(0, 0.1)
+  tau.a.jday ~ dgamma(0.1, 0.1)
+
+  mu.a.eff ~ dnorm(0, 0.1)
+  tau.a.eff ~ dgamma(0.1, 0.1)
+
+  mu.g.0 ~ dnorm(0, 0.1)
+  tau.g.0 ~ dgamma(0.1, 0.1)
+
+  mu.e.0 ~ dnorm(0, 0.1)
+  tau.e.0 ~ dgamma(0.1, 0.1)
+  %s
+  %s
+  %s
+
+  ### Hierarchically loop over each year
+  for (t in 1:n.year) {
+
+    # Year-specific hierarchical effects
+    b.0[t] ~ dnorm(mu.b.0, tau.b.0)
+    a.0[t] ~ dnorm(mu.a.0, tau.a.0)
+    a.jday[t] ~ dnorm(mu.a.jday, tau.a.jday)
+    a.bft[t] ~ dnorm(mu.a.bft, tau.a.bft)
+    a.eff[t] ~ dnorm(mu.a.eff, tau.a.eff)
+
+    g.0[t] ~ dnorm(mu.g.0, tau.g.0)
+    e.0[t] ~ dnorm(mu.e.0, tau.e.0)
+    %s
+    %s
+    %s
+
+    ### Process & Observation model of points
+    for (j in 1:n.site) {
+
+      # Occupancy for season 1 in each year
+      logit(psi[j, 1, t]) <- b.0[t]%s
+      Z[j, 1, t] ~ dbin(psi[j, 1, t], 1)
+
+      # Detectability for season 1 in each year
+      for (k in 1:n.visit) {
+        logit(p[j, k, 1, t]) <- a.0[t] + a.jday[t] * jday[j, k, 1, t] + a.bft[t] * bft[j, k, 1, t] + a.eff[t] * eff[j, k, 1, t]
+        mu.p[j, k, 1, t] <- p[j, k, 1, t] * Z[j, 1, t]
+        y[j, k, 1, t] ~ dbin(mu.p[j, k, 1, t], 1)
+      }
+
+      # Colonization & persistence for seasons 2-N in each year
+      for (l in 2:n.season) {
+
+        logit(phi[j, l - 1, t]) <- e.0[t]%s
+        logit(gamma[j, l - 1, t]) <- g.0[t]%s
+        psi[j, l, t] <- phi[j, l - 1, t] * Z[j, l - 1, t] + gamma[j, l - 1, t] * (1 - Z[j, l - 1, t])
+        Z[j, l, t] ~ dbin(psi[j, l, t], 1)
+
+        # Detectability for seasons 2-N in each year
+        for (k in 1:n.visit) {
+          logit(p[j, k, l, t]) <- a.0[t] + a.jday[t] * jday[j, k, l, t] + a.bft[t] * bft[j, k, l, t] + a.eff[t] * eff[j, k, l, t]
+          mu.p[j, k, l, t] <- p[j, k, l, t] * Z[j, l, t]
+          y[j, k, l, t] ~ dbin(mu.p[j, k, l, t], 1)
+        }
+      }
+    }
+  }
+}
+', psi_priors, phi_priors, gamma_priors, psi_year, phi_year, gamma_year, psi_term, phi_term, gamma_term)
 }

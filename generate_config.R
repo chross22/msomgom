@@ -47,6 +47,14 @@ generate_config <- function(
   species_codes = c("RIWH"),
   active_species = species_codes[1],
 
+  # names of covariates (matching names in the occ_covariates list passed to
+  # run_occupancy_model()/fit_occupancy_model()) to put on initial occupancy,
+  # persistence, and colonization respectively. Empty (the default) means
+  # that process stays intercept-only, exactly as before this option existed.
+  covariates_psi = character(0),
+  covariates_phi = character(0),
+  covariates_gamma = character(0),
+
   make_figs = FALSE,
 
   n_chains = 3,
@@ -112,6 +120,11 @@ generate_config <- function(
     species = list(
       codes = as.list(species_codes),
       active = active_species
+    ),
+    covariates = list(
+      psi = as.list(covariates_psi),
+      phi = as.list(covariates_phi),
+      gamma = as.list(covariates_gamma)
     ),
     output = list(
       make_figs = make_figs

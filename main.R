@@ -6,7 +6,14 @@
 #   result$fit          # the fitted mcmc.list
 #   result$evaluation    # convergence diagnostics / parameter summary, see evaluate_model.R
 #
-# From the command line:
+# To put environmental covariates on occupancy/persistence/colonization, list
+# their names under a config's covariates.psi/phi/gamma (see
+# configs/bof_riwh.yaml), build them yourself (e.g. with average_covariates.R)
+# into a named list of [num_cells x num_ssn] matrices, and pass that in:
+#   result <- run_occupancy_model("configs/my_run.yaml", occ_covariates = my_covariates)
+#
+# From the command line (no occ_covariates support - covariates.psi/phi/gamma
+# must be empty in the config):
 #   Rscript main.R configs/bof_riwh.yaml
 #
 # See config.yaml fields documented in configs/bof_riwh.yaml, and
@@ -23,7 +30,7 @@ get_script_dir <- function() {
   getwd()
 }
 
-run_occupancy_model <- function(config_path) {
+run_occupancy_model <- function(config_path, occ_covariates = NULL) {
   pipeline_dir <- get_script_dir()
   source(file.path(pipeline_dir, "padstr0.R"))
   source(file.path(pipeline_dir, "makeSeasons.R"))
@@ -38,7 +45,7 @@ run_occupancy_model <- function(config_path) {
 
   prep <- prep_survey_data(config)
   arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
-  fit <- fit_occupancy_model(arrays, config)
+  fit <- fit_occupancy_model(arrays, config, occ_covariates = occ_covariates)
 
   evaluation <- NULL
   if (is.null(config$evaluation) || isTRUE(config$evaluation$run_after_fit)) {
