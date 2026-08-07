@@ -1,0 +1,34 @@
+citHeader(
+  "msomgom implements the multi-species occupancy model of MacKenzie et al. ",
+  "(2002). Cite the paper for the method and the package for the ",
+  "implementation. The data products a given run leans on carry their own ",
+  "citations - see the References section of the README."
+)
+
+bibentry(
+  bibtype  = "Article",
+  key      = "mackenzie2002occupancy",
+  title    = "Estimating site occupancy rates when detection probabilities are less than one",
+  author   = c(person(c("Darryl", "I."), "MacKenzie"),
+               person(c("James", "D."), "Nichols"),
+               person(c("Gideon", "B."), "Lachman"),
+               person("Sam", "Droege"),
+               person(c("J.", "Andrew"), "Royle"),
+               person(c("Catherine", "A."), "Langtimm")),
+  journal  = "Ecology",
+  year     = "2002",
+  volume   = "83",
+  number   = "8",
+  pages    = "2248--2255",
+  doi      = "10.1890/0012-9658(2002)083[2248:ESORWD]2.0.CO;2"
+)
+
+bibentry(
+  bibtype  = "Manual",
+  key      = "msomgom",
+  title    = "msomgom: Multi-Species Occupancy Model of the Gulf of Maine",
+  author   = person("Camille", "Ross"),
+  year     = format(Sys.Date(), "%Y"),
+  note     = paste0("R package version ", meta$Version),
+  url      = "https://github.com/chross22/msomgom"
+)

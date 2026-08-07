@@ -315,12 +315,23 @@ legacy/                            # archived pre-refactor scripts (gitignored, 
 docs/refactor_plan.md              # full history of the generalization refactor
 ```
 
+## Citing msomgom
+
+```r
+citation("msomgom")
+```
+
+That gives three entries: the package, the multi-species occupancy model of
+MacKenzie et al. (2002) that it implements, and a note that the data products a
+run leans on carry their own citations. A methods section usually needs all
+three.
+
 ## References
 
 - Copernicus Marine Service (n.d.). *E.U. Copernicus Marine Service Information (CMEMS), Marine Data Store (MDS).* <https://marine.copernicus.eu/>
 - Grolemund, G., & Wickham, H. (2011). Dates and times made easy with lubridate. *Journal of Statistical Software*, 40(3), 1–25. <https://www.jstatsoft.org/v40/i03/>
 - Hijmans, R. J., Brown, A., & Barbosa, M. (2026). *terra: Spatial data analysis* [R package]. <https://CRAN.R-project.org/package=terra>
-- Kenney, R. D. (2021). *The North Atlantic Right Whale Consortium database: A guide for users and contributors* (Version 7). North Atlantic Right Whale Consortium Reference Document 2021-01. University of Rhode Island Graduate School of Oceanography. <https://www.narwc.org/uploads/1/1/6/6/116623219/sightingsdatabaseusers_guideupdated2021-09-20.pdf>
+- Kenney, R. D. (2023). *The North Atlantic Right Whale Consortium database: A guide for users and contributors* (Version 8). North Atlantic Right Whale Consortium Reference Document 2023-01. University of Rhode Island Graduate School of Oceanography. <https://www.narwc.org/uploads/1/1/6/6/116623219/narwc_users_guide__v8_.pdf>
 - MacKenzie, D. I., Nichols, J. D., Lachman, G. B., Droege, S., Royle, J. A., & Langtimm, C. A. (2002). Estimating site occupancy rates when detection probabilities are less than one. *Ecology*, 83(8), 2248–2255.
 - MacKenzie, D. I., Nichols, J. D., Hines, J. E., Knutson, M. G., & Franklin, A. B. (2003). Estimating site occupancy, colonization, and local extinction when a species is detected imperfectly. *Ecology*, 84(8), 2200–2207. <https://doi.org/10.1890/02-3090>
 - Müller, K., & Wickham, H. (2026). *tibble: Simple data frames* [R package]. <https://CRAN.R-project.org/package=tibble>
