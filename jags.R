@@ -26,6 +26,29 @@
 #'   model text is generated per-run (see `build_whale_model_code()`) rather
 #'   than being one static model.
 #' @return the `jags.parfit()` result (an `mcmc.list`)
+#' @references The model follows MacKenzie et al. (2003), \emph{Estimating
+#'   site occupancy, colonization, and local extinction when a species is
+#'   detected imperfectly}, Ecology 84:2200-2207
+#'   (\doi{10.1890/02-3090}), an extension of the single-season detection
+#'   model of MacKenzie et al. (2002), Ecology 83:2248-2255. Fit with JAGS
+#'   (Plummer 2003).
+#' @seealso [build_detection_arrays()], which produces `arrays`;
+#'   [average_covariates()], which produces suitable `occ_covariates`;
+#'   [evaluate_occupancy_model()], the next pipeline stage;
+#'   [build_whale_model_code()] for how the BUGS model text itself is generated
+#' @family pipeline stages
+#' @examples
+#' \dontrun{
+#' config <- load_config("configs/bof_riwh.yaml")
+#' prep <- prep_survey_data(config)
+#' arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
+#'
+#' # no environmental covariates
+#' fit <- fit_occupancy_model(arrays, config)
+#'
+#' # with covariates on psi/phi (config$covariates$psi/phi must list "sst")
+#' fit <- fit_occupancy_model(arrays, config, occ_covariates = list(sst = sst_avg$sst))
+#' }
 fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   library(R2jags)
   library(rjags)
@@ -185,6 +208,11 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
 #' @param n_cov_phi number of covariates on persistence (`phi`)
 #' @param n_cov_gamma number of covariates on colonization (`gamma`)
 #' @return character string of BUGS/JAGS model code, ready to `writeLines()` to a `.bug` file
+#' @seealso [fit_occupancy_model()], which calls this internally
+#' @family pipeline stages
+#' @examples
+#' cat(build_whale_model_code(0, 0, 0))       # intercept-only, the original model
+#' cat(build_whale_model_code(1, 0, 2))       # 1 covariate on psi, 2 on gamma, none on phi
 build_whale_model_code <- function(n_cov_psi, n_cov_phi, n_cov_gamma) {
   # coef_prefix (b/e/g) names the coefficients, matching the existing
   # b.0/e.0/g.0 intercept convention for psi/phi/gamma respectively.

@@ -7,6 +7,13 @@
 #'
 #' @param config a config list, as returned by `load_config()`
 #' @return `NULL`, invisibly
+#' @seealso [run_occupancy_model()], which calls this if `cleanup.run_after_model` is `true`
+#' @family pipeline stages
+#' @examples
+#' \dontrun{
+#' config <- load_config("configs/bof_riwh.yaml")
+#' cleanup_outputs(config)
+#' }
 cleanup_outputs <- function(config) {
   if (file.exists(config$paths$data_file)) {
     file.remove(config$paths$data_file)

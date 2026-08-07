@@ -12,6 +12,7 @@
 #'   `Rscript main.R ...` (parsed from `--file=`); otherwise (sourced
 #'   interactively) the current working directory, on the assumption it's
 #'   already the project root
+#' @keywords internal
 get_script_dir <- function() {
   cmd_args <- commandArgs(trailingOnly = FALSE)
   file_arg <- grep("^--file=", cmd_args, value = TRUE)
@@ -53,6 +54,10 @@ get_script_dir <- function() {
 #' @param occ_covariates optional named list of covariate matrices for
 #'   `fit_occupancy_model()`; see its documentation
 #' @return `list(fit = <mcmc.list>, evaluation = <evaluate_occupancy_model() result, or NULL if skipped>)`
+#' @seealso [load_config()], [prep_survey_data()], [build_detection_arrays()],
+#'   [fit_occupancy_model()], [evaluate_occupancy_model()], and
+#'   [cleanup_outputs()] - the individual stages this function orchestrates
+#' @family pipeline stages
 run_occupancy_model <- function(config_path, occ_covariates = NULL) {
   pipeline_dir <- get_script_dir()
   source(file.path(pipeline_dir, "padstr0.R"))

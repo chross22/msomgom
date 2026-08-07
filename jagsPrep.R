@@ -22,6 +22,17 @@
 #'   \item{num_cells}{number of grid cells (sites)}
 #'   \item{num_ssn}{number of year x season combinations}
 #'   \item{area_grid_sf}{the hex grid, as an `sf` polygon object with a `grid_id` column}
+#' @seealso [prep_survey_data()], which produces `tmpdat`/`season_info`;
+#'   [fit_occupancy_model()], the next pipeline stage, which takes this
+#'   function's return value directly as `arrays`
+#' @family pipeline stages
+#' @examples
+#' \dontrun{
+#' config <- load_config("configs/bof_riwh.yaml")
+#' prep <- prep_survey_data(config)
+#' arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
+#' arrays$num_cells
+#' }
 build_detection_arrays <- function(tmpdat, season_info, config) {
   library(sf)
   library(dplyr)

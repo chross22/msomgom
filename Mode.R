@@ -7,6 +7,9 @@
 #' @param x vector to find the mode of
 #' @param na.rm logical; if `TRUE`, `NA` values are dropped before computing the mode
 #' @return the most frequent value in `x`
+#' @examples
+#' Mode(c(1, 2, 2, 3))
+#' Mode(c("a", "b", "b", NA), na.rm = TRUE)
 Mode <- function(x, na.rm = FALSE) {
 #http://stackoverflow.com/questions/2547402/is-there-a-built-in-function-for-finding-the-mode
   if(na.rm){

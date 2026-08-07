@@ -17,6 +17,11 @@
 #' @return data.frame with one row per year x season combination and columns
 #'   `Y`, `M_BEG`, `D_BEG`, `M_END`, `D_END`, `JDAY_BEG`, `JDAY_END`,
 #'   `SSN_NO` (absolute index), `SSN_GRPD_NO` (index within year)
+#' @seealso [prep_survey_data()] and [season_windows_from_config()], both of
+#'   which call this with `config$ssn_beg`/`config$ssn_end` (see [load_config()])
+#' @family pipeline stages
+#' @examples
+#' makeSeasons(2020, 2021, rbind(c(8, 1), c(9, 1)), rbind(c(8, 31), c(9, 30)))
 makeSeasons <- function(begYEAR,endYEAR,ssn_beg,ssn_end){
   uy=begYEAR:endYEAR
   num_ssn=dim(ssn_beg)[1] #NUMBER OF SEASONS

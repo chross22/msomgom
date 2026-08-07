@@ -10,6 +10,15 @@
 #'   `paths.output_dir` resolved to absolute paths, plus two derived fields:
 #'   `ssn_beg`/`ssn_end` (matrices for `makeSeasons()`) and
 #'   `study_area$polygon_matrix` (a closed-ring `lon`/`lat` matrix for `st_polygon()`)
+#' @seealso [generate_config()] to create a config file programmatically;
+#'   [run_occupancy_model()], which calls this first
+#' @family pipeline stages
+#' @examples
+#' \dontrun{
+#' config <- load_config("configs/bof_riwh.yaml")
+#' config$species$active
+#' config$study_area$polygon_matrix
+#' }
 load_config <- function(path) {
   if (!requireNamespace("yaml", quietly = TRUE)) {
     stop("The 'yaml' package is required. Install it with install.packages('yaml').")
@@ -60,6 +69,7 @@ load_config <- function(path) {
 #' @param path a file path string
 #' @return logical; `TRUE` if `path` starts with `/`, `~`, or a Windows drive
 #'   letter (e.g. `C:\`)
+#' @keywords internal
 isAbsolutePath <- function(path) {
   grepl("^(/|~|[A-Za-z]:[\\\\/])", path)
 }

@@ -36,6 +36,17 @@
 #'   platform or non-POP-shipboard FILEID) that the pipeline's filters should drop
 #' @param seed random seed, for reproducible mock data
 #' @return the path the CSV was written to, invisibly
+#' @seealso [generate_config()] to create `config_path` first;
+#'   [run_occupancy_model()], run against the resulting CSV in the README's
+#'   "Try it without real data" walkthrough
+#' @family testing helpers
+#' @examples
+#' \dontrun{
+#' generate_config("mock_test", data_file = "data/mock_survey_data.csv",
+#'                  n_chains = 2, n_adapt = 100, n_burn = 100, n_iter = 200)
+#' generate_mock_data("configs/mock_test.yaml")
+#' run_occupancy_model("configs/mock_test.yaml")
+#' }
 generate_mock_data <- function(config_path, out_path = NULL,
                                 surveys_per_season = 3,
                                 points_per_survey = 14,

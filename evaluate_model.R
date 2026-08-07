@@ -29,6 +29,10 @@
 #'   `config$paths$output_dir`, or the working directory if `config` is also `NULL`
 #' @param save_plots logical; whether to save trace/density plots
 #' @return invisibly, `list(parameters = <summary data.frame>, occupancy_comparison = <data.frame or NULL>)`
+#' @seealso [fit_occupancy_model()], which produces `fit`; [load_mcmc_list()]
+#'   for how a saved `.RData` path is resolved; [compare_naive_vs_modeled_occupancy()]
+#'   for the occupancy-comparison calculation
+#' @family pipeline stages
 evaluate_occupancy_model <- function(fit, arrays = NULL, config = NULL,
                                       output_dir = NULL, save_plots = TRUE) {
   library(coda)
@@ -110,6 +114,8 @@ evaluate_occupancy_model <- function(fit, arrays = NULL, config = NULL,
 #'
 #' @param path path to a `.RData` file containing an `mcmc.list`
 #' @return the `mcmc.list` object
+#' @seealso [evaluate_occupancy_model()], which calls this when `fit` is a path
+#' @keywords internal
 load_mcmc_list <- function(path) {
   if (!file.exists(path)) stop("File not found: ", path)
   e <- new.env()
@@ -131,6 +137,8 @@ load_mcmc_list <- function(path) {
 #' @param arrays the list returned by `build_detection_arrays()`
 #' @param config a config list, as returned by `load_config()`
 #' @return data.frame with columns `year`, `n_sites`, `naive_psi`, `modeled_psi`
+#' @seealso [evaluate_occupancy_model()], which calls this when `fit` tracked `Z`
+#' @keywords internal
 compare_naive_vs_modeled_occupancy <- function(fit, arrays, config) {
   species_code <- config$species$active
   max_survs <- arrays$max_survs

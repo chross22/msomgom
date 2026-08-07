@@ -12,6 +12,15 @@
 #'   \item{dat}{the full cleaned dataset}
 #'   \item{tmpdat}{a reduced dataset with just the columns needed for gridding}
 #'   \item{season_info}{list(season = <season lookup table from `makeSeasons()`>, num_ssn = <int>)}
+#' @seealso [load_config()], which produces `config`; [build_detection_arrays()],
+#'   the next pipeline stage, which takes this function's `tmpdat`/`season_info`
+#' @family pipeline stages
+#' @examples
+#' \dontrun{
+#' config <- load_config("configs/bof_riwh.yaml")
+#' prep <- prep_survey_data(config)
+#' prep$season_info$num_ssn
+#' }
 prep_survey_data <- function(config) {
   library(dplyr)
   library(readr)

@@ -50,6 +50,23 @@
 #' @param cleanup_after_run logical; whether `run_occupancy_model()` calls
 #'   `cleanup_outputs()` after fitting (deletes the downloaded data file and `figs/`)
 #' @return the path the config was written to, invisibly
+#' @seealso [load_config()] to read the config back in; the fields
+#'   documented here match `configs/bof_riwh.yaml`
+#' @family config
+#' @examples
+#' \dontrun{
+#' # reproduces the pipeline's original Bay of Fundy / RIWH settings
+#' generate_config("bof_riwh")
+#'
+#' # a different study, with covariates on occupancy and persistence
+#' generate_config(
+#'   "my_run",
+#'   data_file = "data/my_survey_data.csv",
+#'   beg_year = 2015, end_year = 2020,
+#'   species_codes = c("RIWH", "HUWH"), active_species = "HUWH",
+#'   covariates_psi = c("sst"), covariates_phi = c("sst")
+#' )
+#' }
 generate_config <- function(
   name,
   configs_dir = "configs",
