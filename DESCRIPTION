@@ -1,5 +1,5 @@
 Package: msomgom
-Title: Dynamic Occupancy Model for Cetacean Vessel-Survey Sightings
+Title: Multi-Species Occupancy Model of the Gulf of Maine
 Version: 0.0.0.9000
 Authors@R:
     person("Camille", "Ross", email = "camille.ross@maine.edu", role = c("aut", "cre"))

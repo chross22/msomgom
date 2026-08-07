@@ -1,4 +1,4 @@
-# msomgom
+# msomgom: Multi-Species Occupancy Model of the Gulf of Maine
 
 A dynamic (multi-season, colonization/persistence) occupancy model — following
 the MacKenzie et al. (2003) formulation, itself an extension of the
@@ -12,7 +12,8 @@ hardcoded.
 
 See [References](#references) at the bottom for full citations.
 
-The model is currently fit **one species per run** (selected via config); the
+Despite the package name, the model is currently fit **one species per run**
+(selected via config) rather than jointly across species; the
 data-prep/gridding stages already loop over a configurable list of species and
 build one detection-history array per species, so extending this to a true
 hierarchical multi-species model later doesn't require redoing that part. See

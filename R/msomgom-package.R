@@ -1,4 +1,4 @@
-#' msomgom: Dynamic Occupancy Model for Cetacean Vessel-Survey Sightings
+#' msomgom: Multi-Species Occupancy Model of the Gulf of Maine
 #'
 #' See the package README for a full walkthrough, or
 #' `vignette("getting-started", package = "msomgom")`.
