@@ -1,0 +1,21 @@
+name: R-CMD-check
+
+# Calls the shared workflow in chross22/distsamp so the check configuration
+# lives in one place across these packages.
+#
+# jags is here because rjags is in Suggests and R CMD check installs suggested
+# packages; rjags will not build without the JAGS system library.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  check:
+    uses: chross22/distsamp/.github/workflows/r-cmd-check-reusable.yaml@main
+    with:
+      apt-packages: 'libgdal-dev libgeos-dev libproj-dev libudunits2-dev jags'
