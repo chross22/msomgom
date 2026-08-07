@@ -1,0 +1,48 @@
+Package: msomgom
+Title: Dynamic Occupancy Model for Cetacean Vessel-Survey Sightings
+Version: 0.0.0.9000
+Authors@R:
+    person("Camille", "Ross", email = "camille.ross@maine.edu", role = c("aut", "cre"))
+Description: Fits a dynamic (multi-season, colonization/persistence) occupancy
+    model, following MacKenzie et al. (2003) <doi:10.1890/02-3090>, to
+    cetacean vessel-survey sightings via JAGS. Config-driven data cleaning,
+    spatial gridding, model fitting, and convergence evaluation, with optional
+    environmental covariates on occupancy, persistence, and colonization built
+    from Copernicus Marine Service data (e.g. via the 'datamatch' package,
+    <https://github.com/chross22/datamatch>) or local NetCDF files. Originally
+    built around Bay of Fundy North Atlantic right whale survey data from the
+    NARWC Sightings Database, generalized so study area, date range, species,
+    and MCMC settings are all config-driven rather than hardcoded.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1.0)
+Imports:
+    dplyr,
+    lubridate,
+    parallel,
+    readr,
+    sf,
+    sfheaders,
+    stringr,
+    tibble,
+    yaml
+Suggests:
+    coda,
+    dclone,
+    googledrive,
+    knitr,
+    mapview,
+    rjags,
+    rmarkdown,
+    terra,
+    testthat (>= 3.0.0),
+    tmap,
+    webshot,
+    withr
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+URL: https://github.com/chross22/msomgom
+BugReports: https://github.com/chross22/msomgom/issues
+Config/roxygen2/version: 8.1.0

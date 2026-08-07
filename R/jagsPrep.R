@@ -33,16 +33,17 @@
 #' arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
 #' arrays$num_cells
 #' }
+#' @export
 build_detection_arrays <- function(tmpdat, season_info, config) {
-  library(sf)
-  library(dplyr)
-  library(tibble)
-
   make_figs <- isTRUE(config$output$make_figs)
   if (make_figs) {
-    library(mapview)
-    library(tmap)
-    library(webshot) # needed to save maps. on new systems, may have to do: webshot::install_phantomjs()
+    # webshot: needed to save maps. on new systems, may have to do: webshot::install_phantomjs()
+    for (pkg in c("mapview", "tmap", "webshot")) {
+      if (!requireNamespace(pkg, quietly = TRUE)) {
+        stop("The '", pkg, "' package is required when output.make_figs is true. ",
+             "Install it with install.packages('", pkg, "').")
+      }
+    }
   }
 
   num_ssn <- season_info$num_ssn
@@ -151,11 +152,11 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
       if (make_figs) {
         figs_dir <- file.path(config$paths$output_dir, "figs")
         if (!dir.exists(figs_dir)) dir.create(figs_dir, recursive = TRUE)
-        survey_map <- mapview(nereid_tracks, color = "red", lwd = 4, alpha = 1, popup = NULL) +
-          mapview(tmpdat_sf_season_survey, color = "blue", cex = 2, alpha = .2, popup = NULL) +
-          mapview(area_grid_sf)
+        survey_map <- mapview::mapview(nereid_tracks, color = "red", lwd = 4, alpha = 1, popup = NULL) +
+          mapview::mapview(tmpdat_sf_season_survey, color = "blue", cex = 2, alpha = .2, popup = NULL) +
+          mapview::mapview(area_grid_sf)
         html_fl <- file.path(figs_dir, paste0(unique(tmpdat_sf_season$YEAR), "_ssn", i, "_surv", j, "_", season_ufids[j], ".html"))
-        mapshot(survey_map, url = html_fl)
+        mapview::mapshot(survey_map, url = html_fl)
       }
 
       # intersect grid with survey trackline (linestring), calculate and store trackline length in each grid cell.
@@ -246,7 +247,7 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
       cmd <- paste(spp[j], "3d[,,", i, "] = as.matrix(st_drop_geometry(", spp[j], "_ssn", i, "_grid_sf))", sep = "")
       eval(parse(text = cmd))
 
-      cmd <- paste("rm(", spp[j], ", ", spp[j], "_season, ", spp_ssn_name, ")", sep = "")
+      cmd <- paste("rm(", spp[j], "_season, ", spp_ssn_name, ")", sep = "")
       eval(parse(text = cmd))
     }
 

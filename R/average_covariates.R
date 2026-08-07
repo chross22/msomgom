@@ -45,6 +45,7 @@
 #' config <- load_config("configs/bof_riwh.yaml")
 #' windows <- season_windows_from_config(config)
 #' }
+#' @export
 season_windows_from_config <- function(config) {
   season <- makeSeasons(config$dates$beg_year, config$dates$end_year, config$ssn_beg, config$ssn_end)
   data.frame(
@@ -73,6 +74,7 @@ season_windows_from_config <- function(config) {
 #' @family covariate windows
 #' @examples
 #' regular_windows("2018-01-01", "2018-06-30", by = "1 month")
+#' @export
 regular_windows <- function(start_date, end_date, by = "1 month") {
   start_date <- as.Date(start_date)
   end_date <- as.Date(end_date)
@@ -114,6 +116,7 @@ regular_windows <- function(start_date, end_date, by = "1 month") {
 #' \dontrun{
 #' env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 #' }
+#' @export
 load_covariate_netcdf <- function(nc_dir, var_names = NULL, pattern = "\\.nc$") {
   if (!requireNamespace("terra", quietly = TRUE)) {
     stop("The 'terra' package is required. Install it with install.packages('terra').")
@@ -138,7 +141,7 @@ load_covariate_netcdf <- function(nc_dir, var_names = NULL, pattern = "\\.nc$") 
     }
 
     df <- as.data.frame(r, xy = TRUE)
-    df$DATE <- layer_dates[seq_len(nrow(df))]
+    df$DATE <- rep(layer_dates, length.out = nrow(df))
     df$YEAR <- as.numeric(format(df$DATE, "%Y"))
     df$MONTH <- as.numeric(format(df$DATE, "%m"))
     df$DAY <- as.numeric(format(df$DATE, "%d"))
@@ -210,10 +213,8 @@ parse_date_from_filename <- function(path) {
 #' windows <- season_windows_from_config(config)
 #' sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 #' }
+#' @export
 average_covariates <- function(env_dat, area_grid_sf, windows, vars = NULL) {
-  library(sf)
-  library(dplyr)
-
   if (is.null(vars)) {
     non_var_cols <- c("YEAR", "MONTH", "DAY", attr(env_dat, "sf_column"))
     vars <- setdiff(names(env_dat), non_var_cols)

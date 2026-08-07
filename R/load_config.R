@@ -19,6 +19,7 @@
 #' config$species$active
 #' config$study_area$polygon_matrix
 #' }
+#' @export
 load_config <- function(path) {
   if (!requireNamespace("yaml", quietly = TRUE)) {
     stop("The 'yaml' package is required. Install it with install.packages('yaml').")

@@ -14,6 +14,7 @@
 #' config <- load_config("configs/bof_riwh.yaml")
 #' cleanup_outputs(config)
 #' }
+#' @export
 cleanup_outputs <- function(config) {
   if (file.exists(config$paths$data_file)) {
     file.remove(config$paths$data_file)

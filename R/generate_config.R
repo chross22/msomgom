@@ -67,6 +67,7 @@
 #'   covariates_psi = c("sst"), covariates_phi = c("sst")
 #' )
 #' }
+#' @export
 generate_config <- function(
   name,
   configs_dir = "configs",

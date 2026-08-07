@@ -1,0 +1,9 @@
+^\.github$
+^docs$
+^legacy$
+^data$
+^output$
+^\.claude$
+^\.DS_Store$
+^\.git$
+^LICENSE\.md$

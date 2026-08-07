@@ -188,3 +188,48 @@ compiles and samples correctly in JAGS directly, confirming the per-process
 See the original approved plan for the complete config schema and verification steps:
 `~/.claude/plans/flickering-mapping-octopus.md` (local to the machine this was written on;
 copied here for reference since it isn't part of this repo).
+
+## Package conversion
+
+The pipeline was later converted from a collection of `source()`d scripts into a proper,
+installable R package (`DESCRIPTION`/`NAMESPACE`, `R/`, `man/`, `inst/`, `vignettes/`,
+`tests/testthat/`) — a full conversion rather than a lighter-weight vignette bolted onto
+the script layout, chosen so `devtools::check()`/`R CMD check` provide real correctness
+guarantees (dependency declarations, documentation completeness, no undeclared globals)
+and so the package is installable via `devtools::install_github()` instead of requiring
+users to clone the repo and `source()` files in the right order.
+
+What changed structurally:
+
+- Every top-level `.R` file moved into `R/`, each becoming a package function
+  (`run_occupancy_model()`, `prep_survey_data()`, `build_detection_arrays()`,
+  `fit_occupancy_model()`, `evaluate_occupancy_model()`, `cleanup_outputs()`, etc.) with
+  full roxygen2 documentation, `@export` where user-facing, and `@import`/`@importFrom`
+  centralized in `R/msomgom-package.R`.
+- `library()`/`require()` calls inside function bodies were removed — hard dependencies
+  moved to `@import`/`@importFrom` (CRAN convention), and truly optional dependencies
+  (`rjags`/`dclone` for fitting, `coda` for diagnostics, `terra`/`mapview`/`tmap`/`webshot`/
+  `googledrive` for their respective optional features) now use
+  `requireNamespace(pkg, quietly = TRUE)` guards with a clear `stop()` message telling the
+  user what to install, rather than either failing obscurely or auto-installing silently.
+  `R2jags` was dropped entirely after confirming empirically it wasn't actually needed for
+  JAGS fitting to work (`rjags` + `dclone` alone are sufficient).
+  `NSE` column-name references (`dplyr` data-masking) that `R CMD check` otherwise flags as
+  undefined globals are declared via `utils::globalVariables()` in the same file.
+  Together these get `devtools::check()` to 0 errors/0 warnings/0 notes.
+- `configs/` moved to `inst/extdata/configs/`; the old `Rscript main.R config.yaml` CLI
+  entry point became `inst/scripts/run_pipeline.R`, a thin wrapper around
+  `library(msomgom); run_occupancy_model(args[1])`.
+- Added `vignettes/getting-started.Rmd`, a fully executable walkthrough (config generation,
+  mock data, fitting, evaluation, and an optional environmental-covariates section) —
+  verified by actually rendering it with `rmarkdown::render()`, not just written to look
+  plausible.
+- Added a `tests/testthat/` suite covering both pure-logic units (`padstr0()`, `Mode()`,
+  `makeSeasons()`, `build_whale_model_code()`, covariate window builders) and full
+  end-to-end pipeline runs against mock data (gated on `rjags`/`dclone`/`coda` being
+  installed, since those need a working JAGS install). Two real bugs surfaced by writing
+  these tests and are now fixed: `average_covariates()`'s `load_covariate_netcdf()` path
+  mis-recycled per-layer dates across raster cells instead of repeating them (`YEAR`/`MONTH`
+  came back `NA` for anything past the first cell), and `build_detection_arrays()`'s
+  per-species cleanup step tried to `rm()` a bare species-code object (e.g. `RIWH`) that was
+  never actually created, throwing a spurious "object not found" warning on every run.

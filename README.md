@@ -19,6 +19,13 @@ hierarchical multi-species model later doesn't require redoing that part. See
 [`docs/refactor_plan.md`](docs/refactor_plan.md) for the full history of how this
 pipeline got to its current shape and why.
 
+`msomgom` is a regular R package (`devtools::check()` passes with 0 errors/0
+warnings/0 notes). The fastest way to see it work end-to-end is the vignette:
+
+```r
+vignette("getting-started", package = "msomgom")
+```
+
 ## Setup
 
 You need R, JAGS, and a handful of R packages with native dependencies (spatial
@@ -50,61 +57,67 @@ sudo rm -rf /Library/Developer/CommandLineTools
 xcode-select --install
 ```
 
-### 2. R packages
+### 2. Install the package
 
 ```r
-install.packages(c(
-  "yaml", "sf", "sfheaders", "dplyr", "readr", "stringr", "lubridate", "tibble",
-  "rjags", "dclone", "R2jags"
-))
+# install.packages("devtools")
+devtools::install_github("chross22/msomgom")
+```
+
+This pulls in the hard dependencies (`dplyr`, `lubridate`, `parallel`, `readr`,
+`sf`, `sfheaders`, `stringr`, `tibble`, `yaml`) automatically. A few packages
+are optional (in `Suggests`) and only needed for specific features - installed
+separately, and only if you use them:
+
+- `rjags` (Plummer 2025) and `dclone` (Sólymos 2010) - actually fitting the
+  model (`fit_occupancy_model()`/`run_occupancy_model()`); also needs a
+  working JAGS install (see step 1)
+- `coda` (Plummer et al. 2006) - convergence diagnostics (`evaluate_occupancy_model()`)
+- `terra` (Hijmans et al. 2026) - reading local NetCDF covariate files (`load_covariate_netcdf()`)
+- `mapview`, `tmap`, `webshot` - only if you set `output.make_figs: true` in a config
+- `googledrive` - only if you set `paths.google_drive_filename`
+- `knitr`, `rmarkdown` - building the vignette
+
+```r
+install.packages(c("rjags", "dclone", "coda", "terra"))
 ```
 
 Spatial gridding uses `sf` (Pebesma 2018; Pebesma & Bivand 2023); config
 parsing uses `yaml` (Stephens & Simonov 2025); data cleaning uses `dplyr`
 (Wickham et al. 2026a), `readr` (Wickham et al. 2026b), `stringr` (Wickham
 2025), `lubridate` (Grolemund & Wickham 2011), and `tibble` (Müller & Wickham
-2026); JAGS is driven from R via `rjags` (Plummer 2025), `R2jags` (Su & Yajima
-2024), and `dclone` (Sólymos 2010) for the parallel chains; `evaluate_model.R`'s
-diagnostics use `coda` (Plummer et al. 2006).
-
-`mapview`, `tmap`, and `webshot` are only needed if you set `output.make_figs: true`
-in a config; `googledrive` is only needed if you set `paths.google_drive_filename`.
-Neither is required for a normal run. `terra` (Hijmans et al. 2026) is only
-needed for [`average_covariates.R`](#environmental-covariates) (`install.packages("terra")`).
-
-This pipeline is written in R (R Core Team 2026); see [References](#references) for full citations.
+2026). This pipeline is written in R (R Core Team 2026); see
+[References](#references) for full citations.
 
 ## Usage
 
 ### Configure a run
 
-Configs live in `configs/`, one YAML file per run. `configs/bof_riwh.yaml`
-reproduces the pipeline's original hardcoded Bay of Fundy / RIWH settings as a
-working example; `configs/mock_test.yaml` is a small/fast config for the
-mock-data smoke test below.
-
-Generate a new config programmatically rather than hand-editing YAML:
+Generate a config programmatically rather than hand-editing YAML:
 
 ```r
-source("generate_config.R")
+library(msomgom)
 generate_config(
   "my_run",
   data_file = "data/my_survey_data.csv",
   beg_year = 2015, end_year = 2020,
   species_codes = c("RIWH", "HUWH"), active_species = "HUWH"
 )
-# -> writes configs/my_run.yaml
+# -> writes configs/my_run.yaml (relative to the current working directory)
 ```
 
-See the comments in `configs/bof_riwh.yaml` for what every field means (paths,
-survey vessel/FILEID filters, date range, season boundaries, study-area polygon,
-species, JAGS/MCMC settings, evaluation, cleanup).
+Two example configs ship with the package under `system.file("extdata/configs", package = "msomgom")`:
+`bof_riwh.yaml` reproduces the pipeline's original hardcoded Bay of Fundy / RIWH
+settings, and `mock_test.yaml` is a small/fast config for the mock-data smoke
+test below. See the comments in `bof_riwh.yaml` for what every field means
+(paths, survey vessel/FILEID filters, date range, season boundaries,
+study-area polygon, species, JAGS/MCMC settings, evaluation, cleanup).
 
 ### Run the pipeline
 
 ```r
-source("main.R")
-result <- run_occupancy_model("configs/bof_riwh.yaml")
+library(msomgom)
+result <- run_occupancy_model("configs/my_run.yaml")
 result$fit          # the fitted mcmc.list
 result$evaluation    # convergence diagnostics + posterior summary, see below
 ```
@@ -112,13 +125,15 @@ result$evaluation    # convergence diagnostics + posterior summary, see below
 or from the command line:
 
 ```bash
-Rscript main.R configs/bof_riwh.yaml
+Rscript -e 'system.file("scripts/run_pipeline.R", package = "msomgom")' # locate it
+Rscript "$(Rscript -e 'cat(system.file("scripts/run_pipeline.R", package = "msomgom"))')" configs/my_run.yaml
 ```
 
-This runs, in order: `data_prep.R` (load + clean the survey CSV) ->
-`jagsPrep.R` (build the spatial grid and detection-history arrays) -> `jags.R`
-(fit the model) -> `evaluate_model.R` (diagnostics, unless disabled in the
-config) -> `cleanup.R` (only if `cleanup.run_after_model: true`).
+`run_occupancy_model()` calls, in order: `prep_survey_data()` (load + clean
+the survey CSV) -> `build_detection_arrays()` (build the spatial grid and
+detection-history arrays) -> `fit_occupancy_model()` (fit the model) ->
+`evaluate_occupancy_model()` (diagnostics, unless disabled in the config) ->
+`cleanup_outputs()` (only if `cleanup.run_after_model: true`).
 
 ### Try it without real data
 
@@ -126,21 +141,20 @@ The real NARWC survey CSV isn't included in this repo (see Data below). To
 exercise the whole pipeline with synthetic data:
 
 ```r
-source("generate_config.R")
-source("generate_mock_data.R")
+library(msomgom)
 generate_config("mock_test", data_file = "data/mock_survey_data.csv",
                  output_dir = "output/mock_test",
                  n_chains = 2, n_adapt = 100, n_burn = 100, n_iter = 200)
 generate_mock_data("configs/mock_test.yaml")
-
-source("main.R")
 run_occupancy_model("configs/mock_test.yaml")
 ```
 
 Mock data is grounded in the NARWC handbook's actual field codes (`PLATFORM`,
 `FILEID`, `LEGTYPE`, `LEGSTAGE`, `VISIBLTY`, `BEAUFORT`, `IDREL`, `SPECCODE`),
 including some decoy records the pipeline's filters should drop, so it's a real
-exercise of the filtering logic, not just a happy-path stub.
+exercise of the filtering logic, not just a happy-path stub. See
+`vignette("getting-started", package = "msomgom")` for this same walkthrough,
+fully worked through and rendered.
 
 ### Evaluate a saved run
 
@@ -148,8 +162,8 @@ exercise of the filtering logic, not just a happy-path stub.
 result, without re-fitting:
 
 ```r
-source("load_config.R"); source("evaluate_model.R")
-config <- load_config("configs/bof_riwh.yaml")
+library(msomgom)
+config <- load_config("configs/my_run.yaml")
 evaluate_occupancy_model("output/RIWH.colext.RData", config = config)
 ```
 
@@ -183,8 +197,8 @@ from `datamatch` run separately). Either way, it spatially averages onto this
 pipeline's hex grid and temporally averages over whatever windows you give it:
 
 ```r
-source("load_config.R"); source("average_covariates.R")
-config <- load_config("configs/bof_riwh.yaml")
+library(msomgom)
+config <- load_config("configs/my_run.yaml")
 
 # tied to the occupancy model's own season/year structure
 windows <- season_windows_from_config(config)
@@ -203,11 +217,10 @@ sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 covariate list into `run_occupancy_model()`:
 
 ```r
-source("generate_config.R")
+library(msomgom)
 generate_config("my_run", covariates_psi = c("sst"), covariates_phi = c("sst"))
 # -> configs/my_run.yaml has covariates: { psi: [sst], phi: [sst], gamma: [] }
 
-source("main.R")
 result <- run_occupancy_model("configs/my_run.yaml", occ_covariates = list(sst = sst_avg$sst))
 result$evaluation$parameters # now includes mu.b.cov (psi) and mu.e.cov (phi)
 ```
@@ -234,24 +247,36 @@ outputs are regenerable from a run.
 
 ## Repository layout
 
+`msomgom` is a standard R package; the layout follows the usual conventions
+(`R CMD build`/`devtools::check()` both pass clean):
+
 ```
-configs/                 # one YAML config per run (see generate_config.R)
-load_config.R             # load_config(path) -> validated config list
-generate_config.R         # generate_config(name, ...) -> writes configs/<name>.yaml
-generate_mock_data.R      # synthetic survey CSV for testing, no real data needed
-average_covariates.R      # spatial/temporal averaging of environmental covariates onto the grid
-padstr0.R                 # zero-pads GMT time-of-day values
-makeSeasons.R             # builds the season lookup table from config date ranges
-data_prep.R               # prep_survey_data(config) -> cleaned survey data
-jagsPrep.R                 # build_detection_arrays(...) -> spatial grid + detection arrays
-jags.R                      # fit_occupancy_model(...) -> fits the JAGS model
-evaluate_model.R            # evaluate_occupancy_model(...) -> convergence diagnostics
-cleanup.R                    # cleanup_outputs(config) -> removes data file/figs
-main.R                        # run_occupancy_model(config_path) -> orchestrates all of the above
-check_citations.R              # verifies README.md's References section is still current
+DESCRIPTION, NAMESPACE            # package metadata + generated exports (roxygen2)
+R/
+  load_config.R                    # load_config(path) -> validated config list
+  generate_config.R                # generate_config(name, ...) -> writes <name>.yaml
+  generate_mock_data.R             # synthetic survey CSV for testing, no real data needed
+  average_covariates.R             # spatial/temporal averaging of covariates onto the grid
+  padstr0.R                        # zero-pads GMT time-of-day values
+  makeSeasons.R                    # builds the season lookup table from config date ranges
+  data_prep.R                      # prep_survey_data(config) -> cleaned survey data
+  jagsPrep.R                       # build_detection_arrays(...) -> spatial grid + detection arrays
+  jags.R                           # fit_occupancy_model(...) -> fits the JAGS model
+  evaluate_model.R                 # evaluate_occupancy_model(...) -> convergence diagnostics
+  cleanup.R                        # cleanup_outputs(config) -> removes data file/figs
+  main.R                           # run_occupancy_model(config_path) -> orchestrates all of the above
+  msomgom-package.R                # package-level doc + centralized @import/@importFrom
+man/                               # generated .Rd files (roxygen2, do not edit by hand)
+vignettes/getting-started.Rmd      # worked end-to-end walkthrough on mock data
+tests/testthat/                    # testthat suite (unit tests + end-to-end pipeline tests)
+inst/
+  extdata/configs/                 # example configs: bof_riwh.yaml, mock_test.yaml
+  scripts/
+    run_pipeline.R                 # CLI wrapper: Rscript run_pipeline.R config.yaml
+    check_citations.R              # verifies README.md's References section is still current
 .github/workflows/check-citations.yml  # runs check_citations.R monthly, opens an issue on drift
-legacy/                        # archived pre-refactor scripts (gitignored, kept locally)
-docs/refactor_plan.md           # full history of the generalization refactor
+legacy/                            # archived pre-refactor scripts (gitignored, kept locally)
+docs/refactor_plan.md              # full history of the generalization refactor
 ```
 
 ## References
@@ -272,9 +297,8 @@ docs/refactor_plan.md           # full history of the generalization refactor
 - Ross, C. (n.d.). *datamatch: Matches environmental data with species occurrence data* [R package]. <https://github.com/chross22/datamatch>
 - Sólymos, P. (2010). dclone: Data cloning in R. *The R Journal*, 2(2), 29–37. <https://journal.r-project.org/>
 - Stephens, J., & Simonov, K. (2025). *yaml: Methods to convert R data to YAML and back* [R package]. <https://CRAN.R-project.org/package=yaml>
-- Su, Y.-S., & Yajima, M. (2024). *R2jags: Using R to run 'JAGS'* [R package]. <https://CRAN.R-project.org/package=R2jags>
 - Wickham, H. (2025). *stringr: Simple, consistent wrappers for common string operations* [R package]. <https://CRAN.R-project.org/package=stringr>
 - Wickham, H., François, R., Henry, L., Müller, K., & Vaughan, D. (2026a). *dplyr: A grammar of data manipulation* [R package]. <https://CRAN.R-project.org/package=dplyr>
 - Wickham, H., Hester, J., & Bryan, J. (2026b). *readr: Read rectangular text data* [R package]. <https://CRAN.R-project.org/package=readr>
 
-Citations above reflect package versions installed at the time this was written (see [Setup](#setup)); run `citation("pkgname")` in R for the exact citation matching your installed version. [`check_citations.R`](check_citations.R) checks this list against current CRAN metadata and that every cited URL still resolves; a [scheduled workflow](.github/workflows/check-citations.yml) runs it monthly and opens an issue if anything needs review.
+Citations above reflect package versions installed at the time this was written (see [Setup](#setup)); run `citation("pkgname")` in R for the exact citation matching your installed version. [`inst/scripts/check_citations.R`](inst/scripts/check_citations.R) checks this list against current CRAN metadata and that every cited URL still resolves; a [scheduled workflow](.github/workflows/check-citations.yml) runs it monthly and opens an issue if anything needs review.

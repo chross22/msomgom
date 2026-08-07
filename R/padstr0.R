@@ -18,6 +18,7 @@
 #' @examples
 #' padstr0(800, 6)      # "000800"
 #' padstr0(200000, 6)   # "200000", not "02e+05"
+#' @export
 padstr0 <- function(x, width) {
   formatC(x, width = width, format = "d", flag = "0")
 }

@@ -47,6 +47,7 @@
 #' generate_mock_data("configs/mock_test.yaml")
 #' run_occupancy_model("configs/mock_test.yaml")
 #' }
+#' @export
 generate_mock_data <- function(config_path, out_path = NULL,
                                 surveys_per_season = 3,
                                 points_per_survey = 14,

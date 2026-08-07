@@ -1,0 +1,167 @@
+---
+title: "Getting started with msomgom"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with msomgom}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+have_jags <- requireNamespace("rjags", quietly = TRUE) && requireNamespace("dclone", quietly = TRUE)
+```
+
+msomgom fits a dynamic (multi-season, colonization/persistence) occupancy
+model - following MacKenzie et al. (2003), an extension of the single-season
+detection model of MacKenzie et al. (2002) - to cetacean vessel-survey
+sightings, via JAGS (Plummer 2003). It was originally built around Bay of
+Fundy North Atlantic right whale survey data from the NARWC Sightings
+Database, then generalized so the study area, date range, species, and MCMC
+settings are all driven by a config rather than hardcoded. See the package
+README for full citations and setup instructions (JAGS itself has to be
+installed separately, and needs to be version 4.x).
+
+This vignette walks through the whole pipeline using synthetic data, since
+the real NARWC survey CSV has its own data-sharing terms and isn't included
+in the package. The mock data generator, `generate_mock_data()`, is grounded
+in the NARWC handbook's actual field codes rather than arbitrary values, so
+it's a real exercise of the pipeline's filtering logic, not just a
+happy-path stub.
+
+```{r setup}
+library(msomgom)
+```
+
+## 1. Configure a run
+
+Configs are YAML files, one per run, so different study areas/species/MCMC
+settings can be kept side by side. `generate_config()` writes one
+programmatically rather than requiring you to hand-edit YAML; its defaults
+reproduce the pipeline's original Bay of Fundy / right whale (RIWH) settings.
+Here we override the MCMC settings to be small and fast, since this vignette
+needs to actually run:
+
+```{r configure}
+work_dir <- tempfile("msomgom-vignette-")
+dir.create(work_dir)
+
+config_path <- generate_config(
+  "vignette_demo",
+  configs_dir = file.path(work_dir, "configs"),
+  project_dir = work_dir,
+  data_file = "data/mock_survey_data.csv",
+  output_dir = "output",
+  beg_year = 2018, end_year = 2019,
+  beg_month = 8, end_month = 9,
+  n_chains = 2, n_adapt = 100, n_burn = 100, n_iter = 200, thin = 1
+)
+config_path
+```
+
+See the comments in a generated config, or `?generate_config`, for what every
+field means: survey vessel/`FILEID` filters, date range, season boundaries,
+the study-area polygon, species, JAGS/MCMC settings, evaluation, and cleanup.
+
+## 2. Generate mock survey data
+
+```{r mock-data}
+generate_mock_data(config_path)
+```
+
+## 3. Run the pipeline
+
+`run_occupancy_model()` runs every stage in order: `prep_survey_data()` (load
++ clean the survey CSV) -> `build_detection_arrays()` (spatial grid +
+detection-history arrays) -> `fit_occupancy_model()` (fit the model) ->
+`evaluate_occupancy_model()` (convergence diagnostics) -> `cleanup_outputs()`
+(only if configured to).
+
+```{r run, eval = have_jags}
+result <- run_occupancy_model(config_path)
+result$fit
+```
+
+```{r run-noeval, eval = !have_jags, echo = FALSE, results = "asis"}
+cat("_(This chunk needs a working JAGS/rjags/dclone install to actually run;",
+    "skipped when building this vignette without one. See README.md for JAGS setup.)_")
+```
+
+`result$fit` is the fitted `mcmc.list`. `result$evaluation` (see next
+section) has already been computed and printed above, since
+`run_occupancy_model()` calls `evaluate_occupancy_model()` by default.
+
+## 4. Evaluate the fit
+
+`evaluate_occupancy_model()` reports a posterior parameter summary table,
+Gelman-Rubin Rhat and effective sample size per parameter (flagging likely
+non-convergence or a noisy posterior), and saves trace/density plots. It also
+works standalone against a previously saved result, without re-fitting:
+
+```{r evaluate, eval = have_jags}
+result$evaluation$parameters
+```
+
+With the tiny MCMC settings used in this vignette (100 adapt / 100 burn-in /
+200 iterations, for speed), don't expect real convergence - a real run should
+use far more iterations, e.g. the defaults in `generate_config()`.
+
+## 5. Environmental covariates (optional)
+
+`whale.mod` can put environmental covariates on detection probability
+(already the case for day-of-year, sea state, and effort), and optionally on
+initial occupancy (`psi`), persistence (`phi`), and colonization (`gamma`)
+too - each process independently, with zero or more named covariates chosen
+per config. A process with none configured stays intercept-only.
+
+`average_covariates()` preps covariate data (from
+[`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch)'s
+output, which pulls from the Copernicus Marine Service, or from local daily
+NetCDF files via `load_covariate_netcdf()`) onto this pipeline's hex grid, at
+either the occupancy model's own season/year windows or arbitrary custom
+ones:
+
+```{r covariates, eval = have_jags}
+config <- load_config(config_path)
+prep <- prep_survey_data(config)
+arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
+
+# a synthetic covariate here, standing in for a real one from
+# load_covariate_netcdf() or datamatch::accessEnvDat()
+set.seed(1)
+windows <- season_windows_from_config(config)
+fake_sst <- matrix(
+  rnorm(arrays$num_cells * nrow(windows), mean = 15, sd = 2),
+  nrow = arrays$num_cells, dimnames = list(NULL, windows$label)
+)
+
+config_cov <- generate_config(
+  "vignette_demo_covariates",
+  configs_dir = file.path(work_dir, "configs"),
+  project_dir = work_dir,
+  data_file = "data/mock_survey_data.csv",
+  output_dir = "output_cov",
+  beg_year = 2018, end_year = 2019,
+  beg_month = 8, end_month = 9,
+  n_chains = 2, n_adapt = 100, n_burn = 100, n_iter = 200, thin = 1,
+  covariates_psi = c("sst")
+)
+
+result_cov <- run_occupancy_model(config_cov, occ_covariates = list(sst = fake_sst))
+result_cov$evaluation$parameters$parameter # now includes mu.b.cov (the sst effect on psi)
+```
+
+Since JAGS can't compile a covariate loop of length zero, the model's BUGS
+code is generated per run (`build_whale_model_code()`) rather than being one
+static model - a config with no covariates produces exactly the original
+intercept-only model, and each process's covariate block is included only
+when that process actually has covariates configured.
+
+## Cleanup
+
+```{r cleanup, include = FALSE}
+unlink(work_dir, recursive = TRUE)
+```

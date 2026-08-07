@@ -28,7 +28,7 @@ check_citations <- function() {
   # style: package -> year currently recorded in README.md. A newer CRAN
   # release means this citation should be bumped to match.
   versioned_packages <- c(
-    dplyr = 2026, R2jags = 2024, readr = 2026, rjags = 2025,
+    dplyr = 2026, readr = 2026, rjags = 2025,
     stringr = 2025, terra = 2026, tibble = 2026, yaml = 2025
   )
 

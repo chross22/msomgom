@@ -33,9 +33,12 @@
 #'   for how a saved `.RData` path is resolved; [compare_naive_vs_modeled_occupancy()]
 #'   for the occupancy-comparison calculation
 #' @family pipeline stages
+#' @export
 evaluate_occupancy_model <- function(fit, arrays = NULL, config = NULL,
                                       output_dir = NULL, save_plots = TRUE) {
-  library(coda)
+  if (!requireNamespace("coda", quietly = TRUE)) {
+    stop("The 'coda' package is required. Install it with install.packages('coda').")
+  }
 
   if (is.character(fit)) {
     fit <- load_mcmc_list(fit)
@@ -46,11 +49,11 @@ evaluate_occupancy_model <- function(fit, arrays = NULL, config = NULL,
   }
 
   param_summary <- summary(fit)
-  ess <- effectiveSize(fit)
+  ess <- coda::effectiveSize(fit)
 
   n_chains <- length(fit)
   if (n_chains >= 2) {
-    rhat <- gelman.diag(fit, multivariate = FALSE)$psrf[, "Point est."]
+    rhat <- coda::gelman.diag(fit, multivariate = FALSE)$psrf[, "Point est."]
   } else {
     warning("Only one chain in fit; can't compute Gelman-Rubin Rhat (needs >= 2 chains). ",
             "Set jags.n_chains >= 2 in the config for a real convergence check.")

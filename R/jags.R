@@ -49,10 +49,14 @@
 #' # with covariates on psi/phi (config$covariates$psi/phi must list "sst")
 #' fit <- fit_occupancy_model(arrays, config, occ_covariates = list(sst = sst_avg$sst))
 #' }
+#' @export
 fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
-  library(R2jags)
-  library(rjags)
-  library(dclone) # built-in functionality for parallel MCMC with jags via jags.parfit()
+  for (pkg in c("rjags", "dclone")) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      stop("The '", pkg, "' package (and a working JAGS install) is required to fit the model. ",
+           "Install it with install.packages('", pkg, "'); see README.md for JAGS setup.")
+    }
+  }
 
   species_code <- config$species$active
   if (!(species_code %in% names(arrays$species_arrays))) {
@@ -174,13 +178,13 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
 
   ### Parallelize across chains ##
   start.time <- Sys.time()
-  cl <- makePSOCKcluster(nc)
-  tmp <- clusterEvalQ(cl, library(dclone))
-  parLoadModule(cl, "glm")
-  parListModules(cl)
-  whale.pars <- jags.parfit(cl, jags.data, params = pars, model_file, inits = inits, n.chains = nc,
+  cl <- parallel::makePSOCKcluster(nc)
+  tmp <- parallel::clusterEvalQ(cl, library(dclone)) # dclone must be attached (not just namespace-loaded) on each worker
+  dclone::parLoadModule(cl, "glm")
+  dclone::parListModules(cl)
+  whale.pars <- dclone::jags.parfit(cl, jags.data, params = pars, model_file, inits = inits, n.chains = nc,
                             n.adapt = n.adapt, n.update = n.burn, thin = thin, n.iter = n.iter)
-  stopCluster(cl)
+  parallel::stopCluster(cl)
   end.time <- Sys.time()
   elapsed.time <- difftime(end.time, start.time, units = "mins")
   print(elapsed.time)
@@ -213,6 +217,7 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
 #' @examples
 #' cat(build_whale_model_code(0, 0, 0))       # intercept-only, the original model
 #' cat(build_whale_model_code(1, 0, 2))       # 1 covariate on psi, 2 on gamma, none on phi
+#' @export
 build_whale_model_code <- function(n_cov_psi, n_cov_phi, n_cov_gamma) {
   # coef_prefix (b/e/g) names the coefficients, matching the existing
   # b.0/e.0/g.0 intercept convention for psi/phi/gamma respectively.

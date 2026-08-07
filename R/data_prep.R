@@ -21,24 +21,20 @@
 #' prep <- prep_survey_data(config)
 #' prep$season_info$num_ssn
 #' }
+#' @export
 prep_survey_data <- function(config) {
-  library(dplyr)
-  library(readr)
-  library(stringr)
-  library(lubridate)
-
   data_file <- config$paths$data_file
   if (!file.exists(data_file)) {
     if (is.null(config$paths$google_drive_filename)) {
       stop("Data file not found and no google_drive_filename configured: ", data_file)
     }
     if (!requireNamespace("googledrive", quietly = TRUE)) {
-      install.packages("googledrive")
+      stop("The 'googledrive' package is required to download data from paths.google_drive_filename. ",
+           "Install it with install.packages('googledrive').")
     }
-    library(googledrive)
     data_dir <- dirname(data_file)
     if (!dir.exists(data_dir)) dir.create(data_dir, recursive = TRUE)
-    drive_download(config$paths$google_drive_filename, path = data_file)
+    googledrive::drive_download(config$paths$google_drive_filename, path = data_file)
   }
 
   ## 1. import data

@@ -22,6 +22,7 @@
 #' @family pipeline stages
 #' @examples
 #' makeSeasons(2020, 2021, rbind(c(8, 1), c(9, 1)), rbind(c(8, 31), c(9, 30)))
+#' @export
 makeSeasons <- function(begYEAR,endYEAR,ssn_beg,ssn_end){
   uy=begYEAR:endYEAR
   num_ssn=dim(ssn_beg)[1] #NUMBER OF SEASONS

@@ -17,7 +17,7 @@ jobs:
       - name: Run citation check
         id: check
         run: |
-          Rscript check_citations.R | tee citation_check_output.txt
+          Rscript inst/scripts/check_citations.R | tee citation_check_output.txt
         continue-on-error: true
 
       - name: Record result
@@ -42,7 +42,7 @@ jobs:
             cat citation_check_output.txt
             echo '```'
             echo
-            echo "Update the citation (and, for versioned packages, the recorded year in \`check_citations.R\`) once reviewed."
+            echo "Update the citation (and, for versioned packages, the recorded year in \`inst/scripts/check_citations.R\`) once reviewed."
           } > "$BODY_FILE"
 
           existing=$(gh issue list --search "Citations need review in:title" --state open --json number --jq '.[0].number')
