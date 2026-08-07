@@ -26,6 +26,32 @@ warnings/0 notes). The fastest way to see it work end-to-end is the vignette:
 vignette("getting-started", package = "msomgom")
 ```
 
+**Contents:** [Quick start](#quick-start) · [Setup](#setup) · [Usage](#usage) ·
+[Data](#data) · [Repository layout](#repository-layout) · [References](#references)
+
+## Quick start
+
+No real survey data needed — this generates a config, a synthetic survey CSV,
+and fits the model against it, all in-memory in a temp directory:
+
+```r
+# install.packages("devtools"); devtools::install_github("chross22/msomgom")
+library(msomgom)
+
+dir.create("configs")
+generate_config("mock_test", data_file = "data/mock_survey_data.csv",
+                 n_chains = 2, n_adapt = 100, n_burn = 100, n_iter = 200)
+generate_mock_data("configs/mock_test.yaml")
+
+result <- run_occupancy_model("configs/mock_test.yaml")
+result$evaluation$parameters # posterior summary: mean, sd, Rhat, effective size, ...
+```
+
+This needs `rjags`/`dclone` installed (plus a working JAGS binary) to actually
+fit the model — see [Setup](#setup) below for that. If you just want to see the
+whole thing run without installing JAGS yourself, `vignette("getting-started",
+package = "msomgom")` walks through this exact example already rendered.
+
 ## Setup
 
 You need R, JAGS, and a handful of R packages with native dependencies (spatial
@@ -122,11 +148,16 @@ result$fit          # the fitted mcmc.list
 result$evaluation    # convergence diagnostics + posterior summary, see below
 ```
 
-or from the command line:
+or from the command line, via the CLI wrapper installed with the package:
+
+```r
+# run once to find where it lives on your machine:
+system.file("scripts/run_pipeline.R", package = "msomgom")
+#> "/usr/local/lib/R/site-library/msomgom/scripts/run_pipeline.R"
+```
 
 ```bash
-Rscript -e 'system.file("scripts/run_pipeline.R", package = "msomgom")' # locate it
-Rscript "$(Rscript -e 'cat(system.file("scripts/run_pipeline.R", package = "msomgom"))')" configs/my_run.yaml
+Rscript /usr/local/lib/R/site-library/msomgom/scripts/run_pipeline.R configs/my_run.yaml
 ```
 
 `run_occupancy_model()` calls, in order: `prep_survey_data()` (load + clean
@@ -200,13 +231,17 @@ pipeline's hex grid and temporally averages over whatever windows you give it:
 library(msomgom)
 config <- load_config("configs/my_run.yaml")
 
+# area_grid_sf must come from build_detection_arrays(), so the covariate grid
+# matches the occupancy model's grid exactly, cell-for-cell
+prep <- prep_survey_data(config)
+arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
+
 # tied to the occupancy model's own season/year structure
 windows <- season_windows_from_config(config)
 # or arbitrary fixed-interval windows, independent of any occupancy config
 # windows <- regular_windows("2018-01-01", "2020-12-31", by = "1 month")
 
 env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
-# area_grid_sf comes from a prior build_detection_arrays() call, so the grid matches exactly
 sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 # sst_avg$sst is a [num_cells x num_ssn] matrix, same num_ssn indexing as
 # effort3d/jday3d/bft3d
