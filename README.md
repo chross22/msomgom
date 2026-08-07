@@ -1,11 +1,16 @@
 # msomgom
 
-A dynamic (multi-season, colonization/persistence) occupancy model for cetacean
-vessel-survey sightings, fit in JAGS. Originally built around Bay of Fundy North
-Atlantic right whale (RIWH) survey data from the [NARWC Sightings
-Database](https://www.narwc.org/uploads/1/1/6/6/116623219/sightingsdatabaseusers_guideupdated2021-09-20.pdf),
-now generalized so file paths, the study-area polygon, date range, species, and
-MCMC settings are all driven by a YAML config rather than hardcoded.
+A dynamic (multi-season, colonization/persistence) occupancy model — following
+the MacKenzie et al. (2003) formulation, itself an extension of the
+single-season detection model of MacKenzie et al. (2002) — for cetacean
+vessel-survey sightings, fit in JAGS (Plummer 2003). Originally built around
+Bay of Fundy North Atlantic right whale (RIWH) survey data from the [NARWC
+Sightings Database](https://www.narwc.org/uploads/1/1/6/6/116623219/sightingsdatabaseusers_guideupdated2021-09-20.pdf)
+(Kenney 2021), now generalized so file paths, the study-area polygon, date
+range, species, and MCMC settings are all driven by a YAML config rather than
+hardcoded.
+
+See [References](#references) at the bottom for full citations.
 
 The model is currently fit **one species per run** (selected via config); the
 data-prep/gridding stages already loop over a configurable list of species and
@@ -25,7 +30,7 @@ libraries for `sf`, JAGS bindings for `rjags`).
 brew install gdal geos proj udunits cmake
 ```
 
-**JAGS needs to be 4.x, not 5.x.** CRAN's `rjags` (as of this writing, 4-17) hard-rejects
+**JAGS** (Plummer 2003) **needs to be 4.x, not 5.x.** CRAN's `rjags` (Plummer 2025, as of this writing, 4-17) hard-rejects
 any JAGS version other than 4.x, but Homebrew's `jags` formula has moved on to 5.0.0.
 Install JAGS 4.3.2 from the last formula revision that built it, via a local tap:
 
@@ -54,10 +59,20 @@ install.packages(c(
 ))
 ```
 
+Spatial gridding uses `sf` (Pebesma 2018; Pebesma & Bivand 2023); config
+parsing uses `yaml` (Stephens & Simonov 2025); data cleaning uses `dplyr`
+(Wickham et al. 2026a), `readr` (Wickham et al. 2026b), `stringr` (Wickham
+2025), `lubridate` (Grolemund & Wickham 2011), and `tibble` (Müller & Wickham
+2026); JAGS is driven from R via `rjags` (Plummer 2025), `R2jags` (Su & Yajima
+2024), and `dclone` (Sólymos 2010) for the parallel chains; `evaluate_model.R`'s
+diagnostics use `coda` (Plummer et al. 2006).
+
 `mapview`, `tmap`, and `webshot` are only needed if you set `output.make_figs: true`
 in a config; `googledrive` is only needed if you set `paths.google_drive_filename`.
-Neither is required for a normal run. `terra` is only needed for
-[`average_covariates.R`](#environmental-covariates) (`install.packages("terra")`).
+Neither is required for a normal run. `terra` (Hijmans et al. 2026) is only
+needed for [`average_covariates.R`](#environmental-covariates) (`install.packages("terra")`).
+
+This pipeline is written in R (R Core Team 2026); see [References](#references) for full citations.
 
 ## Usage
 
@@ -160,10 +175,12 @@ argument).
 
 **1. Prep covariate data.** `average_covariates()` works directly with the
 output of [`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch)
-(an `sf` point object per day, tagged with YEAR/MONTH/DAY), or with a folder
-of local daily NetCDF files via `load_covariate_netcdf()` if you already have
-files on disk instead. Either way, it spatially averages onto this pipeline's
-hex grid and temporally averages over whatever windows you give it:
+(Ross, n.d.) (an `sf` point object per day, tagged with YEAR/MONTH/DAY), which
+pulls from the E.U. Copernicus Marine Service (Copernicus Marine Service,
+n.d.); or with a folder of local daily NetCDF files via `load_covariate_netcdf()`
+if you already have files on disk instead (e.g. from another data source, or
+from `datamatch` run separately). Either way, it spatially averages onto this
+pipeline's hex grid and temporally averages over whatever windows you give it:
 
 ```r
 source("load_config.R"); source("average_covariates.R")
@@ -211,9 +228,9 @@ separate, larger follow-up.
 
 This pipeline expects a CSV in the [NARWC Sightings
 Database](https://www.narwc.org/uploads/1/1/6/6/116623219/sightingsdatabaseusers_guideupdated2021-09-20.pdf)
-format. `data/` and `output/` are gitignored — real survey data has its own
-data-sharing terms and shouldn't be committed here, and model outputs are
-regenerable from a run.
+format (Kenney 2021). `data/` and `output/` are gitignored — real survey data
+has its own data-sharing terms and shouldn't be committed here, and model
+outputs are regenerable from a run.
 
 ## Repository layout
 
@@ -231,6 +248,33 @@ jags.R                      # fit_occupancy_model(...) -> fits the JAGS model
 evaluate_model.R            # evaluate_occupancy_model(...) -> convergence diagnostics
 cleanup.R                    # cleanup_outputs(config) -> removes data file/figs
 main.R                        # run_occupancy_model(config_path) -> orchestrates all of the above
+check_citations.R              # verifies README.md's References section is still current
+.github/workflows/check-citations.yml  # runs check_citations.R monthly, opens an issue on drift
 legacy/                        # archived pre-refactor scripts (gitignored, kept locally)
 docs/refactor_plan.md           # full history of the generalization refactor
 ```
+
+## References
+
+- Copernicus Marine Service (n.d.). *E.U. Copernicus Marine Service Information (CMEMS), Marine Data Store (MDS).* <https://marine.copernicus.eu/>
+- Grolemund, G., & Wickham, H. (2011). Dates and times made easy with lubridate. *Journal of Statistical Software*, 40(3), 1–25. <https://www.jstatsoft.org/v40/i03/>
+- Hijmans, R. J., Brown, A., & Barbosa, M. (2026). *terra: Spatial data analysis* [R package]. <https://CRAN.R-project.org/package=terra>
+- Kenney, R. D. (2021). *The North Atlantic Right Whale Consortium database: A guide for users and contributors* (Version 7). North Atlantic Right Whale Consortium Reference Document 2021-01. University of Rhode Island Graduate School of Oceanography. <https://www.narwc.org/uploads/1/1/6/6/116623219/sightingsdatabaseusers_guideupdated2021-09-20.pdf>
+- MacKenzie, D. I., Nichols, J. D., Lachman, G. B., Droege, S., Royle, J. A., & Langtimm, C. A. (2002). Estimating site occupancy rates when detection probabilities are less than one. *Ecology*, 83(8), 2248–2255.
+- MacKenzie, D. I., Nichols, J. D., Hines, J. E., Knutson, M. G., & Franklin, A. B. (2003). Estimating site occupancy, colonization, and local extinction when a species is detected imperfectly. *Ecology*, 84(8), 2200–2207. <https://doi.org/10.1890/02-3090>
+- Müller, K., & Wickham, H. (2026). *tibble: Simple data frames* [R package]. <https://CRAN.R-project.org/package=tibble>
+- Pebesma, E. (2018). Simple features for R: Standardized support for spatial vector data. *The R Journal*, 10(1), 439–446. <https://doi.org/10.32614/RJ-2018-009>
+- Pebesma, E., & Bivand, R. (2023). *Spatial data science: With applications in R*. Chapman and Hall/CRC. <https://doi.org/10.1201/9780429459016>
+- Plummer, M. (2003). JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling. In *Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)*, Vienna, Austria. <https://www.r-project.org/conferences/DSC-2003/Proceedings/Plummer.pdf>
+- Plummer, M. (2025). *rjags: Bayesian graphical models using MCMC* [R package]. <https://CRAN.R-project.org/package=rjags>
+- Plummer, M., Best, N., Cowles, K., & Vines, K. (2006). CODA: Convergence diagnosis and output analysis for MCMC. *R News*, 6(1), 7–11.
+- R Core Team (2026). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. <https://www.R-project.org/>
+- Ross, C. (n.d.). *datamatch: Matches environmental data with species occurrence data* [R package]. <https://github.com/chross22/datamatch>
+- Sólymos, P. (2010). dclone: Data cloning in R. *The R Journal*, 2(2), 29–37. <https://journal.r-project.org/>
+- Stephens, J., & Simonov, K. (2025). *yaml: Methods to convert R data to YAML and back* [R package]. <https://CRAN.R-project.org/package=yaml>
+- Su, Y.-S., & Yajima, M. (2024). *R2jags: Using R to run 'JAGS'* [R package]. <https://CRAN.R-project.org/package=R2jags>
+- Wickham, H. (2025). *stringr: Simple, consistent wrappers for common string operations* [R package]. <https://CRAN.R-project.org/package=stringr>
+- Wickham, H., François, R., Henry, L., Müller, K., & Vaughan, D. (2026a). *dplyr: A grammar of data manipulation* [R package]. <https://CRAN.R-project.org/package=dplyr>
+- Wickham, H., Hester, J., & Bryan, J. (2026b). *readr: Read rectangular text data* [R package]. <https://CRAN.R-project.org/package=readr>
+
+Citations above reflect package versions installed at the time this was written (see [Setup](#setup)); run `citation("pkgname")` in R for the exact citation matching your installed version. [`check_citations.R`](check_citations.R) checks this list against current CRAN metadata and that every cited URL still resolves; a [scheduled workflow](.github/workflows/check-citations.yml) runs it monthly and opens an issue if anything needs review.
