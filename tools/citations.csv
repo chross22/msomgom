@@ -1,0 +1,10 @@
+key,doi,url,first_author,year,title,container,volume,pages,checks,note
+mackenzie2003,10.1890/02-3090,,MacKenzie,2003,"ESTIMATING SITE OCCUPANCY, COLONIZATION, AND LOCAL EXTINCTION WHEN A SPECIES IS DETECTED IMPERFECTLY",Ecology,84,2200-2207,crossref,
+pebesma2018,10.32614/RJ-2018-009,,Pebesma,2018,Simple Features for R: Standardized Support for Spatial Vector Data,The R Journal,10,439,crossref,
+pebesma2023,10.1201/9780429459016,,Pebesma,2023,Spatial Data Science,,,,crossref,
+wwwnarwcorg,,https://www.narwc.org/uploads/1/1/6/6/116623219/sightingsdatabaseusers_guideupdated2021-09-20.pdf,,,,,,,url,Generated from a scanned URL - fill in the fields by hand
+marinecopernicuseu,,https://marine.copernicus.eu/,,,,,,,url,Generated from a scanned URL - fill in the fields by hand
+wwwrprojectorg,,https://www.r-project.org/conferences/DSC-2003/Proceedings/Plummer.pdf,,,,,,,url,Generated from a scanned URL - fill in the fields by hand
+wwwjstatsoftorg,,https://www.jstatsoft.org/v40/i03/,,,,,,,url,Generated from a scanned URL - fill in the fields by hand
+wwwnarwcorgb,,https://www.narwc.org/uploads/1/1/6/6/116623219/narwc_users_guide__v8_.pdf,,,,,,,url,Generated from a scanned URL - fill in the fields by hand
+journalrprojectorg,,https://journal.r-project.org/,,,,,,,url,Generated from a scanned URL - fill in the fields by hand

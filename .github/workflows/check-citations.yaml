@@ -1,0 +1,27 @@
+name: check-citations
+
+# Calls the shared citation engine in chross22/distsamp. Registry lives in
+# tools/citations.csv; anything repo-specific in tools/citation-hooks.R.
+#
+# Monthly, as this repo has always run it.
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/**'
+      - 'R/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'DESCRIPTION'
+      - 'inst/CITATION'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  citations:
+    uses: chross22/distsamp/.github/workflows/citation-check-reusable.yaml@main
