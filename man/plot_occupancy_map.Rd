@@ -39,11 +39,12 @@ plot_occupancy_map(fit, arrays, year = 2)
 }
 }
 \seealso{
-\code{\link[=plot_survey_coverage]{plot_survey_coverage()}}, \code{\link[=plot_sightings]{plot_sightings()}},
+\code{\link[=plot_survey_coverage]{plot_survey_coverage()}}, \code{\link[=plot_sightings]{plot_sightings()}}, \code{\link[=plot_covariate_map]{plot_covariate_map()}},
 \code{\link[=compare_naive_vs_modeled_occupancy]{compare_naive_vs_modeled_occupancy()}} for the same numbers as a table,
 \code{\link[=load_mcmc_list]{load_mcmc_list()}} for how a saved \code{.RData} path is resolved
 
 Other diagnostic plots:
+\code{\link[=plot_covariate_map]{plot_covariate_map()}},
 \code{\link[=plot_sightings]{plot_sightings()}},
 \code{\link[=plot_survey_coverage]{plot_survey_coverage()}}
 }

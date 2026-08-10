@@ -87,3 +87,50 @@ test_that("plot_occupancy_map errors clearly when Z wasn't tracked", {
 
   expect_error(plot_occupancy_map(fit, res$arrays), "no Z")
 })
+
+make_covariate_matrix <- function(arrays, n_windows = 4) {
+  set.seed(3)
+  matrix(rnorm(arrays$num_cells * n_windows, mean = 15, sd = 2),
+         nrow = arrays$num_cells, dimnames = list(NULL, paste0("ssn", seq_len(n_windows))))
+}
+
+test_that("plot_covariate_map defaults to the last window", {
+  local_null_device()
+  res <- make_arrays()
+  cov <- make_covariate_matrix(res$arrays)
+
+  grid <- plot_covariate_map(cov, res$arrays)
+  expect_s3_class(grid, "sf")
+  expect_equal(grid$covariate, unname(cov[, ncol(cov)]))
+})
+
+test_that("plot_covariate_map selects a window by position or by label", {
+  local_null_device()
+  res <- make_arrays()
+  cov <- make_covariate_matrix(res$arrays)
+
+  grid_by_pos <- plot_covariate_map(cov, res$arrays, window = 2)
+  grid_by_label <- plot_covariate_map(cov, res$arrays, window = "ssn2")
+  expect_equal(grid_by_pos$covariate, unname(cov[, 2]))
+  expect_equal(grid_by_label$covariate, unname(cov[, 2]))
+})
+
+test_that("plot_covariate_map errors on a row-count mismatch", {
+  local_null_device()
+  res <- make_arrays()
+  bad_cov <- matrix(1:10, nrow = 10)
+  expect_error(plot_covariate_map(bad_cov, res$arrays), "arrays\\$num_cells")
+})
+
+test_that("plot_covariate_map errors on an unknown window label", {
+  local_null_device()
+  res <- make_arrays()
+  cov <- make_covariate_matrix(res$arrays)
+  expect_error(plot_covariate_map(cov, res$arrays, window = "nope"), "not found")
+})
+
+test_that("plot_covariate_map errors when cov isn't a matrix", {
+  local_null_device()
+  res <- make_arrays()
+  expect_error(plot_covariate_map(data.frame(x = 1), res$arrays), "must be a matrix")
+})

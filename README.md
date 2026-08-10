@@ -231,6 +231,11 @@ plot_sightings(arrays, "RIWH", season = 3)
 fit <- fit_occupancy_model(arrays, config)             # config$jags$params: "Z"
 plot_occupancy_map(fit, arrays)
 plot_occupancy_map(fit, arrays, year = 2)
+
+# A covariate that's NA everywhere, constant, or spatially implausible is
+# much faster to catch here than after a fit quietly does nothing with it.
+sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
+plot_covariate_map(sst_avg$sst, arrays, var_name = "sst")
 ```
 
 `plot_survey_coverage()`/`plot_sightings()` are built directly from the same
@@ -238,7 +243,10 @@ arrays the model fits on (`arrays$reps` and `arrays$species_arrays`), so what
 you see is exactly what went into the model, not a rederivation from the raw
 CSV. `plot_occupancy_map()` reports the same posterior-mean-`Z` numbers as
 `compare_naive_vs_modeled_occupancy()`'s table, just spatially instead of
-per-year.
+per-year. `plot_covariate_map()` takes any one covariate matrix from
+`average_covariates()` (see [Environmental covariates](#environmental-covariates)
+below) and shows one window of it at a time (`window`, by position or by
+`windows$label`; defaults to the last one).
 
 ### Environmental covariates
 

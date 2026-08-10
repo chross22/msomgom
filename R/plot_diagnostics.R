@@ -16,8 +16,8 @@
 #' @param main plot title; auto-generated from `season` if `NULL`
 #' @param ... passed on to `plot()`
 #' @return invisibly, `arrays$area_grid_sf` with an `n_surveys` column added
-#' @seealso [plot_sightings()], [plot_occupancy_map()], [build_detection_arrays()],
-#'   which produces `arrays`
+#' @seealso [plot_sightings()], [plot_occupancy_map()], [plot_covariate_map()],
+#'   [build_detection_arrays()], which produces `arrays`
 #' @family diagnostic plots
 #' @examples
 #' \dontrun{
@@ -61,8 +61,8 @@ plot_survey_coverage <- function(arrays, season = NULL, main = NULL, ...) {
 #' @param main plot title; auto-generated from `species`/`season` if `NULL`
 #' @param ... passed on to `plot()`
 #' @return invisibly, `arrays$area_grid_sf` with an `n_sightings` column added
-#' @seealso [plot_survey_coverage()], [plot_occupancy_map()], [build_detection_arrays()],
-#'   which produces `arrays`
+#' @seealso [plot_survey_coverage()], [plot_occupancy_map()], [plot_covariate_map()],
+#'   [build_detection_arrays()], which produces `arrays`
 #' @family diagnostic plots
 #' @examples
 #' \dontrun{
@@ -117,7 +117,7 @@ plot_sightings <- function(arrays, species, season = NULL, main = NULL, ...) {
 #' @param ... passed on to `plot()`
 #' @return invisibly, `arrays$area_grid_sf` with an `occupancy` column added
 #'   (posterior mean `Z` for the chosen year)
-#' @seealso [plot_survey_coverage()], [plot_sightings()],
+#' @seealso [plot_survey_coverage()], [plot_sightings()], [plot_covariate_map()],
 #'   [compare_naive_vs_modeled_occupancy()] for the same numbers as a table,
 #'   [load_mcmc_list()] for how a saved `.RData` path is resolved
 #' @family diagnostic plots
@@ -160,5 +160,75 @@ plot_occupancy_map <- function(fit, arrays, year = NULL, main = NULL, ...) {
 
   if (is.null(main)) main <- paste0("Posterior occupancy (year ", year, ")")
   plot(grid["occupancy"], main = main, ...)
+  invisible(grid)
+}
+
+#' Map a covariate across the study grid
+#'
+#' Plots one window's worth of a covariate matrix - e.g. `sst_avg$sst` from
+#' `average_covariates()` - across the grid, so it can be checked visually
+#' before it goes into `fit_occupancy_model()`. A covariate that's `NA`
+#' everywhere, constant, or has an unexpected spatial pattern is much faster
+#' to spot here than after a fit quietly does nothing with it.
+#'
+#' @param cov a `[num_cells x num_windows]` covariate matrix, i.e. one
+#'   element of `average_covariates()`'s return list (e.g. `sst_avg$sst`)
+#' @param arrays the list returned by `build_detection_arrays()`; `cov` must
+#'   come from `average_covariates()` called with this same `arrays$area_grid_sf`,
+#'   so rows line up
+#' @param window which column of `cov` to show, by position or by
+#'   `colnames(cov)` label (e.g. a `windows$label` value); defaults to the
+#'   last column
+#' @param var_name name to use in the auto-generated title (e.g. `"sst"`);
+#'   ignored if `main` is given
+#' @param main plot title; auto-generated from `var_name`/`window` if `NULL`
+#' @param ... passed on to `plot()`
+#' @return invisibly, `arrays$area_grid_sf` with a `covariate` column added
+#'   (the chosen window's values)
+#' @seealso [average_covariates()], which produces `cov`; [plot_survey_coverage()],
+#'   [plot_sightings()], [plot_occupancy_map()]
+#' @family diagnostic plots
+#' @examples
+#' \dontrun{
+#' sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
+#' plot_covariate_map(sst_avg$sst, arrays, var_name = "sst")
+#' plot_covariate_map(sst_avg$sst, arrays, window = 3, var_name = "sst")
+#' }
+#' @export
+plot_covariate_map <- function(cov, arrays, window = NULL, var_name = NULL, main = NULL, ...) {
+  if (!is.matrix(cov)) {
+    stop("cov must be a matrix, e.g. one element of average_covariates()'s return value ",
+         "(like sst_avg$sst).")
+  }
+  if (nrow(cov) != arrays$num_cells) {
+    stop("cov has ", nrow(cov), " row(s) but arrays$num_cells is ", arrays$num_cells,
+         "; cov must come from average_covariates() called with this same arrays$area_grid_sf.")
+  }
+
+  window_labels <- colnames(cov)
+  if (is.null(window)) {
+    window_idx <- ncol(cov)
+  } else if (is.character(window)) {
+    window_idx <- match(window, window_labels)
+    if (is.na(window_idx)) {
+      stop("window '", window, "' not found in colnames(cov): ",
+           paste(window_labels, collapse = ", "))
+    }
+  } else {
+    if (window < 1 || window > ncol(cov)) {
+      stop("window must be between 1 and ", ncol(cov), " (ncol(cov)).")
+    }
+    window_idx <- window
+  }
+
+  grid <- arrays$area_grid_sf
+  grid$covariate <- cov[, window_idx]
+
+  if (is.null(main)) {
+    label <- if (!is.null(window_labels)) window_labels[window_idx] else window_idx
+    var_label <- if (!is.null(var_name)) var_name else "covariate"
+    main <- paste0(var_label, " (", label, ")")
+  }
+  plot(grid["covariate"], main = main, ...)
   invisible(grid)
 }

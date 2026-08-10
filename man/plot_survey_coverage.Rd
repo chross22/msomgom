@@ -39,10 +39,11 @@ plot_survey_coverage(arrays, season = 3)
 }
 }
 \seealso{
-\code{\link[=plot_sightings]{plot_sightings()}}, \code{\link[=plot_occupancy_map]{plot_occupancy_map()}}, \code{\link[=build_detection_arrays]{build_detection_arrays()}},
-which produces \code{arrays}
+\code{\link[=plot_sightings]{plot_sightings()}}, \code{\link[=plot_occupancy_map]{plot_occupancy_map()}}, \code{\link[=plot_covariate_map]{plot_covariate_map()}},
+\code{\link[=build_detection_arrays]{build_detection_arrays()}}, which produces \code{arrays}
 
 Other diagnostic plots:
+\code{\link[=plot_covariate_map]{plot_covariate_map()}},
 \code{\link[=plot_occupancy_map]{plot_occupancy_map()}},
 \code{\link[=plot_sightings]{plot_sightings()}}
 }
