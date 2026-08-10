@@ -26,6 +26,9 @@ warnings/0 notes). The fastest way to see it work end-to-end is the vignette:
 vignette("getting-started", package = "msomgom")
 ```
 
+(Only found if msomgom was installed with `build_vignettes = TRUE` - see
+[Install the package](#2-install-the-package) below; it's not the default.)
+
 **Contents:** [Quick start](#quick-start) · [Setup](#setup) · [Usage](#usage) ·
 [Data](#data) · [Repository layout](#repository-layout) · [References](#references)
 
@@ -35,7 +38,8 @@ No real survey data needed — this generates a config, a synthetic survey CSV,
 and fits the model against it, all in-memory in a temp directory:
 
 ```r
-# install.packages("devtools"); devtools::install_github("chross22/msomgom")
+# install.packages("devtools")
+# devtools::install_github("chross22/msomgom", build_vignettes = TRUE, dependencies = TRUE)
 library(msomgom)
 
 dir.create("configs")
@@ -87,8 +91,20 @@ xcode-select --install
 
 ```r
 # install.packages("devtools")
-devtools::install_github("chross22/msomgom")
+devtools::install_github("chross22/msomgom", build_vignettes = TRUE, dependencies = TRUE)
 ```
+
+**`build_vignettes = TRUE` is not the default** - `devtools`/`remotes` skip
+building vignettes unless asked (`remotes::install_github()`'s `build_opts`
+actually includes `--no-build-vignettes` by default), so
+`vignette("getting-started", package = "msomgom")` will say the vignette
+doesn't exist if you install without it. `dependencies = TRUE` pulls in
+`knitr`/`rmarkdown`, needed to build it, since they're `Suggests`-only.
+
+If you already installed without either flag, `vignette()` still won't find
+it after adding them later - reinstall with both flags rather than trying to
+patch an existing install. In the meantime, the same walkthrough is on
+GitHub: [`vignettes/getting-started.Rmd`](vignettes/getting-started.Rmd).
 
 This pulls in the hard dependencies (`dplyr`, `lubridate`, `parallel`, `readr`,
 `sf`, `sfheaders`, `stringr`, `tibble`, `yaml`) automatically. A few packages
@@ -102,6 +118,10 @@ separately, and only if you use them:
 - `terra` (Hijmans et al. 2026) - reading local NetCDF covariate files (`load_covariate_netcdf()`)
 - `mapview`, `tmap`, `webshot` - only if you set `output.make_figs: true` in a config
 - `googledrive` - only if you set `paths.google_drive_filename`
+- `datamatch`, `derivoce` - fetching/deriving environmental covariates (see
+  [Environmental covariates](#environmental-covariates))
+- `fancyfx` - plotting a fitted covariate's effect (see
+  [Covariate effect plots](#covariate-effect-plots-via-fancyfx))
 - `knitr`, `rmarkdown` - building the vignette
 
 ```r
