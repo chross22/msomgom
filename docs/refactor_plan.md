@@ -257,3 +257,42 @@ What changed structurally:
   came back `NA` for anything past the first cell), and `build_detection_arrays()`'s
   per-species cleanup step tried to `rm()` a bare species-code object (e.g. `RIWH`) that was
   never actually created, throwing a spurious "object not found" warning on every run.
+
+## fancyfx integration (covariate effect plots)
+
+`fancyfx` (`chross22/fancyfx`) plots a model's covariate effects - an effect curve with a
+rug of the raw data above it - across model classes, via an `effect_estimates(model, var)`
+S3 generic: `mgcv::gam` objects go through `gratia`, everything else through
+`marginaleffects::predictions()`. Neither backend can interpret a bare `coda::mcmc.list`,
+since interpreting one requires knowing msomgom's own parameter-naming convention
+(`mu.b.cov`, `mu.e.cov`, ...) - there's no way to generically infer that from the samples
+alone.
+
+Considered adding that interpretation logic to `fancyfx` itself (`effect_estimates.mcmc.list`),
+but rejected it for two reasons: a bare `mcmc.list` isn't specific enough for a *correct*
+generic method - any other package's JAGS/Stan/NIMBLE output is also an `mcmc.list` with a
+completely different parameter-naming scheme, so dispatching on that class alone would
+misinterpret them; and architecturally, dependencies should point from the narrow package to
+the general one (msomgom depending on `fancyfx`, as it already does on `datamatch`/`derivoce`),
+not the reverse - baking one narrow downstream package's naming convention into a general
+plotting utility is backwards coupling.
+
+The actual implementation: `fit_occupancy_model()` tags its return value with its own class
+(`c("msomgom_fit", "mcmc.list")`, so every existing `coda`-based use - `summary()`, `plot()`,
+`as.matrix()` - is unaffected) and attaches a `"msomgom_covariates"` attribute: one row per
+configured covariate, recording which process/coefficient tracks it and the raw-scale
+mean/sd/min/max needed to convert between the standardized scale the model was fit on and the
+covariate's own units. `R/effect_estimates.R`'s `effect_estimates.msomgom_fit()` reads that
+attribute and returns the exact 4-column (`.x`/`.estimate`/`.lower`/`.upper`) tidy frame
+`fancyfx` documents, registered via `@exportS3Method fancyfx::effect_estimates` - R's
+package-qualified S3 registration, which defers activation until `fancyfx` is actually loaded,
+so `fancyfx` stays `Suggests`-only with no load-time dependency either direction. Verified
+both ways: `library(msomgom)` alone loads cleanly with no `fancyfx` installed, and once
+`fancyfx` is attached the method registers and `fancyfx::plotEffects()` runs end-to-end.
+
+One real bug caught while building this: `mu.b.cov` (etc.) is a JAGS vector node, so its
+tracked mcmc column is `mu.b.cov[1]`, `mu.b.cov[2]`, ... for more than one covariate on a
+process - except when there's exactly one covariate, where rjags/dclone drop the bracket
+index entirely and the column is bare `mu.b.cov`. The first implementation assumed
+`mu.b.cov[1]` unconditionally and errored; fixed by checking `n_cov` before deciding which
+column name to look up.

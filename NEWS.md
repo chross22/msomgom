@@ -1,3 +1,24 @@
+# msomgom (development version)
+
+* `survey.on_effort_legtypes` is now a config field (default `c(5, 6)`, the
+  vessel codes), rather than hardcoded - `prep_survey_data()`'s on-effort
+  filter previously only recognized NARWC's ship `LEGTYPE` codes, so every
+  record from a non-vessel platform (e.g. a POP aerial survey, codes `7`/`9`)
+  would have been dropped as off-effort. `platform_code`/`fileid_prefixes`
+  were already config-driven; this was the one remaining vessel-only
+  assumption. See `?generate_config` for an aerial-survey example.
+* Corrected several NARWC handbook section citations in `generate_mock_data()`
+  and `generate_config()`'s documentation that were off by one throughout
+  (e.g. `LEGTYPE` is really 8.A.21, not 8.A.20 as previously cited).
+* A fit with covariates configured can now be plotted with
+  [`fancyfx`](https://github.com/chross22/fancyfx) (optional, `Suggests`):
+  `fit_occupancy_model()` tags its result as `msomgom_fit` and attaches the
+  metadata `effect_estimates.msomgom_fit()` needs to plot a covariate's
+  fitted effect - `fancyfx::plotEffects(fit, dat, "sst")` draws the effect
+  curve with a rug of the raw data above it, the same way it plots an
+  `mgcv::gam`'s partial effects. See the README's "Covariate effect plots"
+  section.
+
 # msomgom 0.1.0
 
 First tagged release. `msomgom` fits a dynamic (multi-season,

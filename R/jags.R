@@ -104,7 +104,7 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   process_covariate_array <- function(process_name) {
     cov_names <- unlist(config$covariates[[process_name]])
     if (is.null(cov_names) || length(cov_names) == 0) {
-      return(list(n_cov = 0, array = NULL))
+      return(list(n_cov = 0, array = NULL, meta = NULL))
     }
     missing_names <- setdiff(cov_names, names(occ_covariates))
     if (length(missing_names) > 0) {
@@ -113,13 +113,21 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
     }
     n_cov <- length(cov_names)
     out <- array(dim = c(n.site, n.season, n.year, n_cov))
+    meta <- vector("list", n_cov)
     for (c_idx in seq_len(n_cov)) {
       mat <- occ_covariates[[cov_names[c_idx]]] # [num_cells x num_ssn]
-      mat.st <- (mat - mean(mat, na.rm = TRUE)) / sd(mat, na.rm = TRUE)
+      cov_mean <- mean(mat, na.rm = TRUE)
+      cov_sd <- sd(mat, na.rm = TRUE)
+      mat.st <- (mat - cov_mean) / cov_sd
       mat.st[is.na(mat.st)] <- 0
       out[, , , c_idx] <- array(dim = c(n.site, n.season, n.year), data = as.vector(mat.st))
+      # kept for effect_estimates.msomgom_fit() (R/effect_estimates.R), so a
+      # covariate's fitted effect can be evaluated on its own raw scale
+      # without needing the original covariate matrix again
+      meta[[c_idx]] <- list(name = cov_names[c_idx], mean = cov_mean, sd = cov_sd,
+                             min = min(mat, na.rm = TRUE), max = max(mat, na.rm = TRUE))
     }
-    list(n_cov = n_cov, array = out)
+    list(n_cov = n_cov, array = out, meta = meta)
   }
 
   psi_cov <- process_covariate_array("psi")
@@ -189,6 +197,13 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   elapsed.time <- difftime(end.time, start.time, units = "mins")
   print(elapsed.time)
 
+  # Tagged with its own class (kept alongside "mcmc.list", so every existing
+  # coda-based use - summary(), plot(), as.matrix(), etc. - is unaffected) and
+  # the covariate metadata needed to evaluate a fitted covariate's effect on
+  # its own raw scale, for effect_estimates.msomgom_fit() (R/effect_estimates.R).
+  class(whale.pars) <- c("msomgom_fit", class(whale.pars))
+  attr(whale.pars, "msomgom_covariates") <- build_covariate_metadata(psi_cov, phi_cov, gamma_cov)
+
   if (isTRUE(config$jags$save_results)) {
     output_dir <- config$paths$output_dir
     if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
@@ -198,6 +213,39 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   }
 
   whale.pars
+}
+
+#' Build the covariate metadata table attached to a fitted model
+#'
+#' One row per (process, covariate): which named coefficient tracks it in the
+#' `mcmc.list`, and the raw-scale mean/sd/min/max needed to convert between the
+#' standardized scale the model was fit on and the covariate's own units.
+#' Attached to `fit_occupancy_model()`'s return value as the
+#' `"msomgom_covariates"` attribute.
+#'
+#' @param psi_cov,phi_cov,gamma_cov the `list(n_cov, array, meta)` results of
+#'   `fit_occupancy_model()`'s internal `process_covariate_array()`
+#' @return a data.frame with columns `name`, `process`, `prefix`, `index`,
+#'   `n_cov`, `mean`, `sd`, `min`, `max` - one row per configured covariate -
+#'   or `NULL` if no process has any covariates configured
+#' @seealso [fit_occupancy_model()], which calls this;
+#'   `effect_estimates.msomgom_fit()` (in `R/effect_estimates.R`), which reads it
+#' @keywords internal
+build_covariate_metadata <- function(psi_cov, phi_cov, gamma_cov) {
+  covariate_rows <- function(cov, process, prefix) {
+    if (cov$n_cov == 0) return(NULL)
+    do.call(rbind, lapply(seq_len(cov$n_cov), function(i) {
+      m <- cov$meta[[i]]
+      data.frame(name = m$name, process = process, prefix = prefix, index = i,
+                 n_cov = cov$n_cov, mean = m$mean, sd = m$sd, min = m$min, max = m$max,
+                 stringsAsFactors = FALSE)
+    }))
+  }
+  rbind(
+    covariate_rows(psi_cov, "psi", "b"),
+    covariate_rows(phi_cov, "phi", "e"),
+    covariate_rows(gamma_cov, "gamma", "g")
+  )
 }
 
 #' Generate the BUGS/JAGS model code

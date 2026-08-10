@@ -67,6 +67,7 @@ averaging; \code{\link[=build_detection_arrays]{build_detection_arrays()}} for \
 \code{occ_covariates}
 
 Other covariates:
+\code{\link[=effect_estimates.msomgom_fit]{effect_estimates.msomgom_fit()}},
 \code{\link[=load_covariate_netcdf]{load_covariate_netcdf()}}
 }
 \concept{covariates}

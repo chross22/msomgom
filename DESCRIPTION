@@ -33,6 +33,7 @@ Suggests:
     datamatch,
     dclone,
     derivoce,
+    fancyfx,
     googledrive,
     knitr,
     mapview,
@@ -45,7 +46,8 @@ Suggests:
     withr
 Remotes:
     chross22/datamatch,
-    chross22/derivoce
+    chross22/derivoce,
+    chross22/fancyfx
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 URL: https://github.com/chross22/msomgom

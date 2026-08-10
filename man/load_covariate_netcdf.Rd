@@ -41,6 +41,7 @@ env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 of reading local files
 
 Other covariates:
-\code{\link[=average_covariates]{average_covariates()}}
+\code{\link[=average_covariates]{average_covariates()}},
+\code{\link[=effect_estimates.msomgom_fit]{effect_estimates.msomgom_fit()}}
 }
 \concept{covariates}

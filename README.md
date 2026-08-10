@@ -351,6 +351,42 @@ Extending this further - to a true hierarchical multi-species model that fits
 all configured species jointly with shared priors - is a deliberately
 separate, larger follow-up.
 
+### Covariate effect plots (via fancyfx)
+
+A fit with covariates configured (above) is tagged `msomgom_fit` and carries
+the metadata needed to plot a covariate's fitted effect with
+[`fancyfx`](https://github.com/chross22/fancyfx) - the effect curve stacked
+above a rug of the raw covariate data, the same way `fancyfx` plots an
+`mgcv::gam`'s partial effects or any other model's predictions.
+`fancyfx` is optional (`Suggests`); msomgom depends on it, not the other way
+around - `effect_estimates.msomgom_fit()` is what makes `fancyfx` work here,
+not anything `fancyfx` itself knows about this package:
+
+```r
+# install.packages("devtools"); devtools::install_github("chross22/fancyfx")
+library(msomgom)
+library(fancyfx)
+
+fit <- fit_occupancy_model(arrays, config, occ_covariates = list(sst = sst_avg$sst))
+
+# the tidy estimate frame on its own:
+effect_estimates(fit, "sst")
+
+# or the full plot: effect curve + a rug of the raw covariate data above it
+rug_dat <- data.frame(sst = as.vector(sst_avg$sst))
+plotEffects(fit, rug_dat, "sst", xlab = "SST")
+```
+
+`scale = "link"` (the default) gives the covariate's own contribution to the
+linear predictor, centered at zero at the covariate's mean - the occupancy
+equivalent of a GAM's partial effect. `scale = "response"` gives the full
+predicted occupancy probability as the covariate varies, with any other
+covariates on the same process held at their mean. Since every msomgom fit is
+summarized from posterior draws, `interval` defaults to the credible interval
+(`"ci"`) rather than a `+/- 1 SE` band, the same way `fancyfx` treats a
+`brms`/`rstanarm` fit. Requires a `jags_params = "colext"` fit (the default) -
+a `"Z"`-mode fit only tracks occupancy states, not the coefficients this reads.
+
 ## Data
 
 This pipeline expects a CSV in the [NARWC Sightings
@@ -376,8 +412,9 @@ R/
   data_prep.R                      # prep_survey_data(config) -> cleaned survey data
   jagsPrep.R                       # build_detection_arrays(...) -> spatial grid + detection arrays
   jags.R                           # fit_occupancy_model(...) -> fits the JAGS model
+  effect_estimates.R               # effect_estimates.msomgom_fit() -> fancyfx integration
   evaluate_model.R                 # evaluate_occupancy_model(...) -> convergence diagnostics
-  plot_diagnostics.R               # plot_survey_coverage/plot_sightings/plot_occupancy_map
+  plot_diagnostics.R               # plot_survey_coverage/plot_sightings/plot_occupancy_map/plot_covariate_map
   cleanup.R                        # cleanup_outputs(config) -> removes data file/figs
   main.R                           # run_occupancy_model(config_path) -> orchestrates all of the above
   msomgom-package.R                # package-level doc + centralized @import/@importFrom
