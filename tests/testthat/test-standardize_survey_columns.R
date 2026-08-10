@@ -107,3 +107,28 @@ test_that("prep_survey_data errors clearly when a required column can't be match
 
   expect_error(prep_survey_data(config), "SPECCODE")
 })
+
+test_that("the vocabulary shared with distsamp is recognised here too", {
+  # These aliases came across from distsamp::narwc_schema()$aliases. The two
+  # tables are synced by hand, so this test is what catches them drifting.
+  dat <- data.frame(
+    FileID = "A", Event = 1, LAT_DD = 43, LONG_DD = -69,
+    LEGTYPE_BK = 2, Visiblity = 5, GroupSize = 3, ALT = 750,
+    check.names = FALSE
+  )
+  out <- standardize_survey_columns(dat)
+  expect_true(all(c("FILEID", "EVENTNO", "LATITUDE", "LONGITUDE", "LEGTYPE",
+                    "VISIBLTY", "NUMBER") %in% names(out)))
+})
+
+test_that("a zone-named time column still lands on GMT, not TIME", {
+  # distsamp standardises time to TIME; this pipeline reads GMT throughout
+  # (data_prep.R, padstr0.R). Sharing the vocabulary must not import that.
+  for (nm in c("TIME_UTC", "Time_Loc", "UTC")) {
+    dat <- data.frame(EVENTNO = 1, ALT = 750, check.names = FALSE)
+    dat[[nm]] <- 120000
+    out <- standardize_survey_columns(dat)
+    expect_true("GMT" %in% names(out), info = nm)
+    expect_false("TIME" %in% names(out), info = nm)
+  }
+})
