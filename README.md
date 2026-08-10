@@ -320,10 +320,12 @@ docs/refactor_plan.md              # full history of the generalization refactor
 citation("msomgom")
 ```
 
-That gives three entries: the package, the multi-species occupancy model of
-MacKenzie et al. (2002) that it implements, and a note that the data products a
-run leans on carry their own citations. A methods section usually needs all
-three.
+That gives three entries: the package; the dynamic (multi-season,
+colonization/persistence) occupancy model of MacKenzie et al. (2003) that it
+implements; and the single-season detection model of MacKenzie et al. (2002)
+that the 2003 paper extends. Data products a run leans on carry their own
+citations separately - see [References](#references) below. A methods
+section usually needs all of these.
 
 ## References
 
