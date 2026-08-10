@@ -54,7 +54,7 @@ test_that("survey.on_effort_legtypes controls which LEGTYPE codes count as on-ef
   # survey's own on-effort code)
   dat <- data.frame(
     FILEID = c("P1001a", "P1001a"), EVENTNO = c(1, 2), PLATFORM = 99,
-    MONTH = 8, DAY = 10, YEAR = 2018, GMT = 120000,
+    MONTH = 8, DAY = 10, YEAR = 2018, TIME = 120000,
     LATITUDE = 44.6, LONGITUDE = -66.4,
     LEGTYPE = c(5, 2), LEGSTAGE = 1,
     ALT = NA, HEADING = 0, WX = "C", CLOUD = 1,
@@ -110,7 +110,7 @@ make_hand_built_config <- function(dat, name = "hand_built_test",
 make_hand_built_record <- function(...) {
   defaults <- list(
     FILEID = "P1001a", EVENTNO = 1, PLATFORM = 99,
-    MONTH = 8, DAY = 10, YEAR = 2018, GMT = 120000,
+    MONTH = 8, DAY = 10, YEAR = 2018, TIME = 120000,
     LATITUDE = 44.6, LONGITUDE = -66.4,
     LEGTYPE = 5, LEGSTAGE = 1,
     ALT = NA, HEADING = 0, WX = "C", CLOUD = 1,

@@ -7,7 +7,7 @@
 padstr0(x, width)
 }
 \arguments{
-\item{x}{numeric vector to pad (e.g. \code{dat$GMT}, an HHMMSS time-of-day value)}
+\item{x}{numeric vector to pad (e.g. \code{dat$TIME}, an HHMMSS time-of-day value)}
 
 \item{width}{target string width}
 }
@@ -16,7 +16,7 @@ character vector, \code{x} zero-padded to \code{width} characters
 }
 \description{
 Reproduces a helper originally sourced by master.R (legacy/master.R) that
-was missing from the repo. Called as \code{padstr0(dat$GMT, 6)} to zero-pad a
+was missing from the repo. Called as \code{padstr0(dat$TIME, 6)} to zero-pad a
 numeric HHMMSS time-of-day value (e.g. 800 -> "000800").
 }
 \details{
@@ -31,7 +31,7 @@ padstr0(800, 6)      # "000800"
 padstr0(200000, 6)   # "200000", not "02e+05"
 }
 \seealso{
-\code{\link[=prep_survey_data]{prep_survey_data()}}, which calls this on the survey's \code{GMT} column
+\code{\link[=prep_survey_data]{prep_survey_data()}}, which calls this on the survey's \code{TIME} column
 
 Other pipeline stages:
 \code{\link[=build_detection_arrays]{build_detection_arrays()}},

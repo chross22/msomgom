@@ -56,7 +56,7 @@ of LEGTYPE for POP surveys of either platform (8.A.20)
 \item IDREL 3 = definite species ID, 9 = not a sighting (8.A.16)
 \item CONFIDNC 00-11 confidence-in-count code (8.A.8)
 \item SPECCODE RIWH/HUWH/FIWH/MIWH/HAPO = right/humpback/fin/minke whale, harbor porpoise (8.A.29)
-\item TIME/GMT is HHMMSS, 24-hour, now archived in GMT (8.A.37)
+\item TIME is HHMMSS, 24-hour, archived in GMT (8.A.37)
 }
 
 Builds a handful of synthetic vessel tracks per season/year within the

@@ -18,7 +18,7 @@ test_that("generate_mock_data writes a CSV with the expected schema", {
   expect_true(file.exists(out_path))
   dat <- read.csv(out_path, na.strings = "")
 
-  required_cols <- c("FILEID", "EVENTNO", "PLATFORM", "MONTH", "DAY", "YEAR", "GMT",
+  required_cols <- c("FILEID", "EVENTNO", "PLATFORM", "MONTH", "DAY", "YEAR", "TIME",
                       "LATITUDE", "LONGITUDE", "LEGTYPE", "LEGSTAGE", "VISIBLTY", "BEAUFORT",
                       "SPECCODE", "IDREL", "NUMBER", "CONFIDNC")
   expect_true(all(required_cols %in% names(dat)))

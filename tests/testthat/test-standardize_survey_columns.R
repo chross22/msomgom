@@ -18,8 +18,12 @@ test_that("punctuation/spacing in a real-world header still matches", {
 })
 
 test_that("an ambiguous match warns and uses the first candidate, not silently picking one", {
+  # distsamp::standardize_narwc_columns() (the first pass) may resolve this
+  # ambiguity itself with its own message before this package's own
+  # ambiguity-warning path ever gets a chance to - either way, a warning is
+  # expected and exactly one column should end up named EVENTNO.
   dat <- data.frame(Event = 1, EventNum = 2, ALT = 750)
-  expect_warning(out <- standardize_survey_columns(dat), "Multiple columns look like 'EVENTNO'")
+  expect_warning(out <- standardize_survey_columns(dat))
   expect_equal(sum(names(out) == "EVENTNO"), 1)
 })
 
@@ -41,6 +45,55 @@ test_that("ALT found by alias matching is used as-is, no default/warning", {
   expect_equal(out$ALT, 300)
 })
 
+test_that("generic substring fallback matches a column not in the alias list at all", {
+  # neither name is an exact alias - "sightingeventnum"/"surveyaltft" only
+  # match because they *contain* "eventnum"/"alt" as substrings
+  dat <- data.frame(Sighting_Event_Num = 1, Survey_Alt_ft = 300, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_true("EVENTNO" %in% names(out))
+  expect_true("ALT" %in% names(out))
+  expect_equal(out$ALT, 300) # matched via substring, not defaulted
+})
+
+test_that("substring fallback still applies the ambiguity warning when several columns qualify", {
+  dat <- data.frame(Boat_Alt = 1, Plane_Alt = 2, EVENTNO = 3)
+  expect_warning(out <- standardize_survey_columns(dat), "Multiple columns look like 'ALT'")
+  expect_equal(sum(names(out) == "ALT"), 1)
+})
+
+test_that("YEAR/MONTH/DAY are derived from a combined date column when missing", {
+  # TIME is also missing here, so it gets derived too (message says
+  # "YEAR/MONTH/DAY/TIME") - only the derived values are asserted, since
+  # pinning the exact message text couples the test to which parts happened
+  # to already be present, not to what this test actually cares about.
+  dat <- data.frame(EVENTNO = 1:2, Date = c("2024-08-15", "2025-01-03"), ALT = 750)
+  expect_message(out <- standardize_survey_columns(dat), "Derived.*from 'Date'")
+  expect_equal(out$YEAR, c(2024, 2025))
+  expect_equal(out$MONTH, c(8, 1))
+  expect_equal(out$DAY, c(15, 3))
+})
+
+test_that("TIME is also derived from a combined datetime column when missing", {
+  dat <- data.frame(EVENTNO = 1, SurveyDateTime = "2024-08-15 14:30:00", ALT = 750, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_equal(out$YEAR, 2024)
+  expect_equal(out$TIME, 143000)
+})
+
+test_that("existing YEAR/MONTH/DAY/TIME columns are left alone, not overwritten by a date column", {
+  dat <- data.frame(EVENTNO = 1, YEAR = 1999, MONTH = 6, DAY = 20, TIME = 90000,
+                     Date = "2024-08-15", ALT = 750)
+  expect_no_message(out <- standardize_survey_columns(dat))
+  expect_equal(out$YEAR, 1999)
+  expect_equal(out$TIME, 90000)
+})
+
+test_that("a date value that can't be parsed becomes NA with a warning naming the count", {
+  dat <- data.frame(EVENTNO = 1:3, Date = c("2024-08-15", "not a date", NA), ALT = 750)
+  expect_warning(out <- standardize_survey_columns(dat), "1 value.*couldn't be parsed")
+  expect_equal(out$YEAR, c(2024, NA, NA))
+})
+
 # End-to-end through prep_survey_data(), with a hand-built CSV using
 # real-world-style column names instead of the exact NARWC ones.
 skip_if_not_installed("dplyr")
@@ -55,7 +108,7 @@ test_that("prep_survey_data reads a CSV with non-canonical column names via alia
   # real-world-style header variants and no ALT column at all
   dat <- data.frame(
     FileID = "P1001a", Event = 1, PLATFORM = 99,
-    MONTH = 8, DAY = 10, YEAR = 2018, GMT = 120000,
+    MONTH = 8, DAY = 10, YEAR = 2018, TIME = 120000,
     Lat = 44.6, Long = -66.4,
     LEGTYPE = 5, LEGSTAGE = 1,
     HEADING = 0, WX = "C", CLOUD = 1,
@@ -88,7 +141,7 @@ test_that("prep_survey_data errors clearly when a required column can't be match
   # no column anywhere close to SPECCODE
   dat <- data.frame(
     FILEID = "P1001a", EVENTNO = 1, PLATFORM = 99,
-    MONTH = 8, DAY = 10, YEAR = 2018, GMT = 120000,
+    MONTH = 8, DAY = 10, YEAR = 2018, TIME = 120000,
     LATITUDE = 44.6, LONGITUDE = -66.4,
     LEGTYPE = 5, LEGSTAGE = 1, ALT = 750,
     HEADING = 0, WX = "C", CLOUD = 1,
@@ -121,14 +174,22 @@ test_that("the vocabulary shared with distsamp is recognised here too", {
                     "VISIBLTY", "NUMBER") %in% names(out)))
 })
 
-test_that("a zone-named time column still lands on GMT, not TIME", {
-  # distsamp standardises time to TIME; this pipeline reads GMT throughout
-  # (data_prep.R, padstr0.R). Sharing the vocabulary must not import that.
-  for (nm in c("TIME_UTC", "Time_Loc", "UTC")) {
+test_that("a zone-named time column lands on TIME", {
+  # This pipeline used to call the column GMT. Both packages now say TIME, so
+  # the two vocabularies line up and data moves between them untranslated.
+  for (nm in c("TIME_UTC", "Time_Loc", "UTC", "GMT")) {
     dat <- data.frame(EVENTNO = 1, ALT = 750, check.names = FALSE)
     dat[[nm]] <- 120000
     out <- standardize_survey_columns(dat)
-    expect_true("GMT" %in% names(out), info = nm)
-    expect_false("TIME" %in% names(out), info = nm)
+    expect_true("TIME" %in% names(out), info = nm)
+    expect_false("GMT" %in% names(out), info = nm)
   }
+})
+
+test_that("the substring fallback matches what an exact alias would not", {
+  # This pipeline is willing to guess from a substring where distsamp refuses
+  # to; that difference in appetite is deliberate on both sides.
+  dat <- data.frame(EVENTNO = 1, Survey_Alt_ft = 300, check.names = FALSE)
+  expect_no_warning(out <- standardize_survey_columns(dat))
+  expect_equal(out$ALT, 300)
 })

@@ -78,7 +78,7 @@ prep_survey_data <- function(config, verbose = FALSE) {
   dat <- read_csv(file = data_file, show_col_types = FALSE)
   dat <- standardize_survey_columns(dat)
 
-  numeric_cols <- c("EVENTNO", "MONTH", "DAY", "YEAR", "GMT", "LATITUDE", "LONGITUDE",
+  numeric_cols <- c("EVENTNO", "MONTH", "DAY", "YEAR", "TIME", "LATITUDE", "LONGITUDE",
                      "LEGTYPE", "LEGSTAGE", "ALT", "HEADING", "CLOUD", "VISIBLTY",
                      "BEAUFORT", "IDREL", "NUMBER", "CONFIDNC")
   character_cols <- c("FILEID", "WX", "SPECCODE")
@@ -112,11 +112,12 @@ prep_survey_data <- function(config, verbose = FALSE) {
   say(nrow(dat), " remain after filtering FILEID to prefix(es) ",
       paste(unlist(config$survey$fileid_prefixes), collapse = "/"))
 
-  # convert the survey's GMT time-of-day (HHMMSS) + date into a real US/Eastern datetime.
+  # convert the survey's time-of-day (HHMMSS, archived in GMT) + date into a
+  # real US/Eastern datetime.
   # this matters because a survey event's local calendar date/month can differ from what's
   # in the raw YEAR/MONTH columns for events recorded near a UTC day boundary.
   dat$date_ymd_gmt <- as.Date(with(dat, paste(YEAR, MONTH, DAY, sep = "-")), "%Y-%m-%d")
-  GMT_strings <- padstr0(dat$GMT, 6) # pad GMT times so they have 6 digits
+  GMT_strings <- padstr0(dat$TIME, 6) # pad the times so they have 6 digits
   # correct instances where "200000" was stored as "02e+05"
   GMT_strings[which(GMT_strings == "02e+05")] <- "200000"
   GMT_strings <- paste(dat$date_ymd_gmt, GMT_strings) # append ymd to hms

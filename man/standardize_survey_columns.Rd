@@ -17,26 +17,49 @@ pipeline's own filtering does not)}
 }
 \value{
 \code{dat} with columns renamed to their canonical NARWC names where a
-match was found, and \code{ALT} added if it was missing entirely
+match was found, \code{YEAR}/\code{MONTH}/\code{DAY}/\code{TIME} derived from a date(time)
+column where applicable, and \code{ALT} added if it was missing entirely
 }
 \description{
 Real survey exports rarely use the exact NARWC column names
 (\code{prep_survey_data()}'s import step expects \code{EVENTNO}, \code{LATITUDE}, etc.
 literally) - a column might be \code{Event}, \code{event_no}, or \verb{Event No.}
-instead. This renames columns to their canonical NARWC name whenever an
-exact case-insensitive match, or one of a small list of common aliases
-(also matched case-insensitively, ignoring punctuation/spaces/underscores)
-is found, so a real-world export doesn't need manual renaming first.
+instead. This renames columns to their canonical NARWC name in three
+passes, most specific first:
+\enumerate{
+\item An exact case-insensitive match against the canonical name itself.
+\item A match against a curated list of common aliases per column
+(\code{survey_column_aliases}), e.g. \code{"seastate"} for \code{BEAUFORT}.
+\item A generic fallback: any column whose name contains the canonical
+name (or a known alias) as a substring, or is contained by one - e.g.
+\code{"Survey_Alt_ft"} for \code{ALT}, \code{"Event_ID"} for \code{EVENTNO}. This is what
+catches a variant nobody thought to enumerate in the alias list, at
+the cost of a higher chance of matching an unrelated column that
+happens to share the substring - every match found this way still
+goes through the same ambiguity warning as the other two passes,
+rather than being applied silently.
+}
+All three passes ignore case, spaces, underscores, and punctuation, so
+\code{"Event No."}, \code{"event_no"}, and \code{"EventNo"} are equivalent.
 }
 \details{
+If \code{YEAR}/\code{MONTH}/\code{DAY}/\code{TIME} are still missing after that (individually,
+any subset), they're derived from a single combined date(time) column if
+one can be found (matched the same three-pass way, e.g. \code{"Date"},
+\code{"Survey_Date"}, or a column merely containing \code{"date"}) - a file that
+records \code{"2024-08-15"} or \code{"2024-08-15 14:30:00"} in one column instead of
+separate \code{YEAR}/\code{MONTH}/\code{DAY}/\code{TIME} columns doesn't need them split out by
+hand first. A value that can't be parsed as a date becomes \code{NA}, with a
+warning naming how many.
+
 \code{ALT} (altitude - only meaningful for aerial surveys) gets one more
-fallback beyond alias matching: if still missing afterward, every record
-is given a constant default (see \code{alt_default}) with a warning, rather
-than erroring, since \code{ALT} isn't otherwise used by this pipeline's
+fallback beyond all of the above: if still missing afterward, every
+record is given a constant default (see \code{alt_default}) with a warning,
+rather than erroring, since \code{ALT} isn't otherwise used by this pipeline's
 filtering/gridding logic.
 
 Every other expected column (see \code{\link[=prep_survey_data]{prep_survey_data()}}) is required - if
-one still can't be matched after this, \code{prep_survey_data()} errors
+one still can't be matched after all of this, \code{prep_survey_data()} errors
 listing exactly which, and what columns were actually found, rather than
 failing later with a confusing "column not found" error from deep inside
 \code{dplyr}.
@@ -45,6 +68,11 @@ failing later with a confusing "column not found" error from deep inside
 dat <- data.frame(Event = 1, Lat = 2, Long = 3, check.names = FALSE)
 # renames Event/Lat/Long, and warns + fills in ALT (missing entirely here):
 names(standardize_survey_columns(dat)) # "EVENTNO" "LATITUDE" "LONGITUDE" "ALT"
+
+# a combined date column instead of separate YEAR/MONTH/DAY:
+dat2 <- data.frame(EVENTNO = 1, Date = "2024-08-15", ALT = 750)
+out <- standardize_survey_columns(dat2)
+out$YEAR # 2024
 }
 \seealso{
 \code{\link[=prep_survey_data]{prep_survey_data()}}, which calls this on the raw CSV before
