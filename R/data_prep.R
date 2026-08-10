@@ -115,10 +115,11 @@ prep_survey_data <- function(config) {
 
   # flag on/off-effort records. LEGTYPE codes on effort are config-driven
   # (survey.on_effort_legtypes) rather than hardcoded, since different survey
-  # platforms use different codes - e.g. NARWC 8.A.20's 5/6 (the default
-  # below) are ship underway / ship not underway (listening station); an
-  # aerial survey's on-effort legs use different codes entirely. LEGSTAGE
-  # (begin/continue/end watch) isn't platform-specific, so it stays fixed.
+  # platforms use different codes - e.g. NARWC 8.A.21's 5/6 (the default
+  # below) are POP ship underway / not underway; a POP aerial survey's
+  # on-effort legs are 7/9 instead. LEGSTAGE (begin/continue/end watch) is
+  # recorded independently of LEGTYPE for POP surveys of either platform
+  # (8.A.20), so it isn't platform-specific and stays fixed.
   on_effort_legtypes <- unlist(config$survey$on_effort_legtypes)
   if (is.null(on_effort_legtypes)) on_effort_legtypes <- c(5, 6)
 

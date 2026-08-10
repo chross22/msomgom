@@ -20,11 +20,19 @@
 #' @param platform_code NARWC `PLATFORM` code for the survey platform (e.g. 99 = R/V Nereid)
 #' @param fileid_prefixes `FILEID` first-letter codes to keep (e.g. `c("P", "p")` for POP shipboard surveys)
 #' @param on_effort_legtypes `LEGTYPE` codes that count as on-effort (combined
-#'   with `LEGSTAGE` begin/continue/end-watch, which isn't platform-specific).
-#'   Defaults to `c(5, 6)`, NARWC 8.A.20's ship-underway / ship-not-underway
-#'   (listening station) codes. A different survey platform - e.g. an aerial
-#'   survey - uses different `LEGTYPE` codes; check the NARWC handbook for
-#'   the codes that apply to your platform and pass them here.
+#'   with `LEGSTAGE` begin/continue/end-watch, which - per NARWC 8.A.20 - is
+#'   recorded independently of `LEGTYPE` and shared across POP ship and aerial
+#'   surveys alike, so it isn't platform-specific). Defaults to `c(5, 6)`,
+#'   NARWC 8.A.21's codes for a POP shipboard survey ("ship underway" /
+#'   "ship not underway"). A POP aerial survey uses `7` ("POP aerial") and
+#'   `9` ("POP aerial, but with restricted data-recording" - used by some
+#'   Southeast surveys after 2003; the handbook notes this variant may not be
+#'   usable for every species, e.g. usable for right whales but not
+#'   dolphins/turtles, so consider whether to include `9` for your species).
+#'   This pipeline assumes POP-format survey data; NARWC's separate
+#'   line-transect `LEGTYPE` scheme (codes `0`-`4`) isn't supported, since
+#'   `LEGSTAGE` means something different there (recorded only during
+#'   census legs, `LEGTYPE == 2`, rather than independently).
 #' @param beg_year first year to include (inclusive)
 #' @param end_year last year to include (inclusive)
 #' @param beg_month first month to include
@@ -73,14 +81,15 @@
 #'   covariates_psi = c("sst"), covariates_phi = c("sst")
 #' )
 #'
-#' # an aerial survey instead of a vessel one: different platform_code/
-#' # fileid_prefixes, and different on_effort_legtypes (check the NARWC
-#' # handbook for the codes that apply to your platform - these are illustrative)
+#' # a POP aerial survey instead of a vessel one: on_effort_legtypes = c(7, 9)
+#' # is NARWC 8.A.21's real POP-aerial codes (7 = normal, 9 = restricted
+#' # data-recording); platform_code/fileid_prefixes are illustrative - look up
+#' # the actual PLATFORM code and FILEID prefix for your specific aircraft/survey
 #' generate_config(
 #'   "aerial_run",
 #'   data_file = "data/aerial_survey_data.csv",
 #'   platform_code = 47, fileid_prefixes = c("A", "a"),
-#'   on_effort_legtypes = c(1, 2)
+#'   on_effort_legtypes = c(7, 9)
 #' )
 #' }
 #' @export

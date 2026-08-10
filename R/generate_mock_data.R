@@ -8,16 +8,19 @@
 #' User's Guide (2021 update) rather than guessed, matching what the existing
 #' filters in `data_prep.R` already assume:
 #' \itemize{
-#'   \item PLATFORM 099 = R/V Nereid (8.A.26)
-#'   \item FILEID starting P/p = POP shipboard survey (8.A.11); p1 = NEAQ Fundy survey
-#'   \item LEGTYPE 5 = ship underway, 6 = ship not underway (8.A.20)
-#'   \item LEGSTAGE 1/2/5 = begin/continue/end watch (8.A.19)
-#'   \item VISIBLTY >= 2 (n.mi.) or -1 (legacy "clear, >=2nm" flag) (8.A.37)
-#'   \item BEAUFORT sea state 0-9, "7" meaning "7 or greater" (8.A.3)
-#'   \item IDREL 3 = definite species ID, 9 = not a sighting (8.A.15)
-#'   \item CONFIDNC 00-11 confidence-in-count code (8.A.7)
-#'   \item SPECCODE RIWH/HUWH/FIWH/MIWH/HAPO = right/humpback/fin/minke whale, harbor porpoise (8.A.28)
-#'   \item TIME/GMT is HHMMSS, 24-hour, now archived in GMT (8.A.36)
+#'   \item PLATFORM 099 = R/V Nereid (8.A.27)
+#'   \item FILEID starting P/p = POP shipboard survey (8.A.12); p1 = NEAQ Fundy survey
+#'   \item LEGTYPE 5 = POP ship underway, 6 = POP ship not underway (8.A.21) -
+#'     a POP aerial survey uses 7/9 instead (see `generate_config()`'s
+#'     `on_effort_legtypes`)
+#'   \item LEGSTAGE 1/2/5 = begin/continue/end watch, recorded independently
+#'     of LEGTYPE for POP surveys of either platform (8.A.20)
+#'   \item VISIBLTY >= 2 (n.mi.) or -1 (legacy "clear, >=2nm" flag) (8.A.38)
+#'   \item BEAUFORT sea state 0-9, "7" meaning "7 or greater" (8.A.4)
+#'   \item IDREL 3 = definite species ID, 9 = not a sighting (8.A.16)
+#'   \item CONFIDNC 00-11 confidence-in-count code (8.A.8)
+#'   \item SPECCODE RIWH/HUWH/FIWH/MIWH/HAPO = right/humpback/fin/minke whale, harbor porpoise (8.A.29)
+#'   \item TIME/GMT is HHMMSS, 24-hour, now archived in GMT (8.A.37)
 #' }
 #'
 #' Builds a handful of synthetic vessel tracks per season/year within the
