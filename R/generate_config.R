@@ -17,8 +17,14 @@
 #' @param google_drive_filename optional; if set and `data_file` is missing,
 #'   `prep_survey_data()` downloads this filename from Google Drive
 #' @param output_dir directory for model outputs, relative to `project_dir` unless absolute
-#' @param platform_code NARWC `PLATFORM` code for the survey vessel (e.g. 99 = R/V Nereid)
+#' @param platform_code NARWC `PLATFORM` code for the survey platform (e.g. 99 = R/V Nereid)
 #' @param fileid_prefixes `FILEID` first-letter codes to keep (e.g. `c("P", "p")` for POP shipboard surveys)
+#' @param on_effort_legtypes `LEGTYPE` codes that count as on-effort (combined
+#'   with `LEGSTAGE` begin/continue/end-watch, which isn't platform-specific).
+#'   Defaults to `c(5, 6)`, NARWC 8.A.20's ship-underway / ship-not-underway
+#'   (listening station) codes. A different survey platform - e.g. an aerial
+#'   survey - uses different `LEGTYPE` codes; check the NARWC handbook for
+#'   the codes that apply to your platform and pass them here.
 #' @param beg_year first year to include (inclusive)
 #' @param end_year last year to include (inclusive)
 #' @param beg_month first month to include
@@ -66,6 +72,16 @@
 #'   species_codes = c("RIWH", "HUWH"), active_species = "HUWH",
 #'   covariates_psi = c("sst"), covariates_phi = c("sst")
 #' )
+#'
+#' # an aerial survey instead of a vessel one: different platform_code/
+#' # fileid_prefixes, and different on_effort_legtypes (check the NARWC
+#' # handbook for the codes that apply to your platform - these are illustrative)
+#' generate_config(
+#'   "aerial_run",
+#'   data_file = "data/aerial_survey_data.csv",
+#'   platform_code = 47, fileid_prefixes = c("A", "a"),
+#'   on_effort_legtypes = c(1, 2)
+#' )
 #' }
 #' @export
 generate_config <- function(
@@ -80,6 +96,7 @@ generate_config <- function(
 
   platform_code = 99,
   fileid_prefixes = c("P", "p"),
+  on_effort_legtypes = c(5, 6),
 
   beg_year = 1988,
   end_year = 2020,
@@ -165,7 +182,8 @@ generate_config <- function(
     ),
     survey = list(
       platform_code = as.integer(platform_code),
-      fileid_prefixes = as.list(fileid_prefixes)
+      fileid_prefixes = as.list(fileid_prefixes),
+      on_effort_legtypes = as.list(as.integer(on_effort_legtypes))
     ),
     dates = list(
       beg_year = as.integer(beg_year),

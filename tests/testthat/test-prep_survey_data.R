@@ -42,3 +42,42 @@ test_that("on.off.eff is always 0 or 1, never NA", {
 
   expect_true(all(prep$dat$on.off.eff %in% c(0, 1)))
 })
+
+test_that("survey.on_effort_legtypes controls which LEGTYPE codes count as on-effort", {
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  data_dir <- file.path(project_dir, "data")
+  dir.create(data_dir, recursive = TRUE)
+
+  # two otherwise-identical, on-effort-eligible records differing only in
+  # LEGTYPE: 5 (the default ship code) vs. 2 (standing in for an aerial
+  # survey's own on-effort code)
+  dat <- data.frame(
+    FILEID = c("P1001a", "P1001a"), EVENTNO = c(1, 2), PLATFORM = 99,
+    MONTH = 8, DAY = 10, YEAR = 2018, GMT = 120000,
+    LATITUDE = 44.6, LONGITUDE = -66.4,
+    LEGTYPE = c(5, 2), LEGSTAGE = 1,
+    ALT = NA, HEADING = 0, WX = "C", CLOUD = 1,
+    VISIBLTY = 3, BEAUFORT = 2,
+    SPECCODE = NA, IDREL = NA, NUMBER = NA, CONFIDNC = NA,
+    BEHAV1 = NA, BEHAV2 = NA
+  )
+  data_file <- file.path(data_dir, "survey.csv")
+  write.csv(dat, data_file, row.names = FALSE, na = "")
+
+  path <- generate_config(
+    "legtype_test", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/survey.csv",
+    beg_year = 2018, end_year = 2018, beg_month = 8, end_month = 9
+  )
+
+  prep_default <- prep_survey_data(load_config(path)) # default on_effort_legtypes = c(5, 6)
+  expect_equal(prep_default$dat$on.off.eff, c(1, 0))
+
+  raw <- yaml::read_yaml(path)
+  raw$survey$on_effort_legtypes <- list(2)
+  yaml::write_yaml(raw, path)
+
+  prep_custom <- prep_survey_data(load_config(path))
+  expect_equal(prep_custom$dat$on.off.eff, c(0, 1))
+})

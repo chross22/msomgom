@@ -135,9 +135,16 @@ generate_config(
 Two example configs ship with the package under `system.file("extdata/configs", package = "msomgom")`:
 `bof_riwh.yaml` reproduces the pipeline's original hardcoded Bay of Fundy / RIWH
 settings, and `mock_test.yaml` is a small/fast config for the mock-data smoke
-test below. See the comments in `bof_riwh.yaml` for what every field means
-(paths, survey vessel/FILEID filters, date range, season boundaries,
+test below. See `?generate_config` for what every field means (paths,
+survey platform/FILEID/on-effort filters, date range, season boundaries,
 study-area polygon, species, JAGS/MCMC settings, evaluation, cleanup).
+
+The survey filters (`platform_code`, `fileid_prefixes`, `on_effort_legtypes`)
+are all config-driven rather than hardcoded to any one platform, so the
+pipeline isn't limited to vessel surveys - an aerial survey in the same NARWC
+handbook format works too, with its own platform code, `FILEID` prefix, and
+on-effort `LEGTYPE` codes (which differ from a vessel's; check the handbook
+for the codes that apply to your platform).
 
 ### Run the pipeline
 

@@ -14,6 +14,7 @@ generate_config(
   output_dir = "output",
   platform_code = 99,
   fileid_prefixes = c("P", "p"),
+  on_effort_legtypes = c(5, 6),
   beg_year = 1988,
   end_year = 2020,
   beg_month = 8,
@@ -58,9 +59,16 @@ overwriting an existing config with the same \code{name}}
 
 \item{output_dir}{directory for model outputs, relative to \code{project_dir} unless absolute}
 
-\item{platform_code}{NARWC \code{PLATFORM} code for the survey vessel (e.g. 99 = R/V Nereid)}
+\item{platform_code}{NARWC \code{PLATFORM} code for the survey platform (e.g. 99 = R/V Nereid)}
 
 \item{fileid_prefixes}{\code{FILEID} first-letter codes to keep (e.g. \code{c("P", "p")} for POP shipboard surveys)}
+
+\item{on_effort_legtypes}{\code{LEGTYPE} codes that count as on-effort (combined
+with \code{LEGSTAGE} begin/continue/end-watch, which isn't platform-specific).
+Defaults to \code{c(5, 6)}, NARWC 8.A.20's ship-underway / ship-not-underway
+(listening station) codes. A different survey platform - e.g. an aerial
+survey - uses different \code{LEGTYPE} codes; check the NARWC handbook for
+the codes that apply to your platform and pass them here.}
 
 \item{beg_year}{first year to include (inclusive)}
 
@@ -140,6 +148,16 @@ generate_config(
   beg_year = 2015, end_year = 2020,
   species_codes = c("RIWH", "HUWH"), active_species = "HUWH",
   covariates_psi = c("sst"), covariates_phi = c("sst")
+)
+
+# an aerial survey instead of a vessel one: different platform_code/
+# fileid_prefixes, and different on_effort_legtypes (check the NARWC
+# handbook for the codes that apply to your platform - these are illustrative)
+generate_config(
+  "aerial_run",
+  data_file = "data/aerial_survey_data.csv",
+  platform_code = 47, fileid_prefixes = c("A", "a"),
+  on_effort_legtypes = c(1, 2)
 )
 }
 }

@@ -42,6 +42,23 @@ test_that("generate_config() -> load_config() round-trips the fields that matter
   expect_equal(config$jags$n_chains, 4)
 })
 
+test_that("on_effort_legtypes defaults to c(5, 6) and round-trips a custom value", {
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- make_temp_project()
+
+  default_path <- generate_config("default_run", configs_dir = configs_dir, project_dir = project_dir)
+  expect_equal(unlist(load_config(default_path)$survey$on_effort_legtypes), c(5, 6))
+
+  aerial_path <- generate_config(
+    "aerial_run", configs_dir = configs_dir, project_dir = project_dir,
+    platform_code = 47, fileid_prefixes = c("A", "a"), on_effort_legtypes = c(1, 2)
+  )
+  config <- load_config(aerial_path)
+  expect_equal(config$survey$platform_code, 47)
+  expect_equal(unlist(config$survey$fileid_prefixes), c("A", "a"))
+  expect_equal(unlist(config$survey$on_effort_legtypes), c(1, 2))
+})
+
 test_that("load_config expands seasons into ssn_beg/ssn_end matrices", {
   configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
   project_dir <- make_temp_project()

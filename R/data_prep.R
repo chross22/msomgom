@@ -113,13 +113,18 @@ prep_survey_data <- function(config) {
     dat$season_grpd[I] <- ssn_no_grpd[i]
   }
 
-  # flag on/off-effort records
+  # flag on/off-effort records. LEGTYPE codes on effort are config-driven
+  # (survey.on_effort_legtypes) rather than hardcoded, since different survey
+  # platforms use different codes - e.g. NARWC 8.A.20's 5/6 (the default
+  # below) are ship underway / ship not underway (listening station); an
+  # aerial survey's on-effort legs use different codes entirely. LEGSTAGE
+  # (begin/continue/end watch) isn't platform-specific, so it stays fixed.
+  on_effort_legtypes <- unlist(config$survey$on_effort_legtypes)
+  if (is.null(on_effort_legtypes)) on_effort_legtypes <- c(5, 6)
+
   dat <- dat |>
     mutate(on.off.eff = if_else((BEAUFORT <= 6 & # normally require sea state 0-3, but sea state will be covariate on detection in this model
-                                   (
-                                     (LEGTYPE == 5 & (LEGSTAGE == 1 | LEGSTAGE == 2 | LEGSTAGE == 5)) | # start, continue, end watch while ship not underway
-                                       (LEGTYPE == 6 & (LEGSTAGE == 1 | LEGSTAGE == 2 | LEGSTAGE == 5)) # legtype = 6 indicates ship not underway (listening station)
-                                   ) &
+                                   (LEGTYPE %in% on_effort_legtypes & (LEGSTAGE == 1 | LEGSTAGE == 2 | LEGSTAGE == 5)) & # start, continue, end watch
                                    (VISIBLTY >= 2 | VISIBLTY == -1) & # VISIBLTY >=2 or -1 indicates visibility of at least 2 nautical miles
                                    (IDREL == 3 | is.na(IDREL)) # if there is a sighting, IDREL must = 3. If no sighting, IDREL should be NA
     ),
