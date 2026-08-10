@@ -1,5 +1,12 @@
 # msomgom (development version)
 
+* `build_detection_arrays()` now explains the multi-day-`FILEID` error instead
+  of printing `">1 jday. STOP!"` and calling a bare `stop()` (which surfaces as
+  an error with no message at all). It names the offending `FILEID`, its
+  season, and the calendar dates it spans, and says what the constraint is:
+  one `FILEID` is one single-day survey, i.e. one replicate column with julian
+  day as a per-survey detection covariate.
+
 * `survey.platform_code` and `survey.fileid_prefixes` are now checked rather
   than assumed: an unset one errors saying which is missing, instead of
   silently filtering every record away (`PLATFORM == NULL` matches nothing).

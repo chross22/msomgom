@@ -175,12 +175,28 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
       effort[, j + 2] <- effort_joined$total_length_km
       rm(effort_joined, intersection, nereid_tracks)
 
-      # fill jday array. jday should be the same for all grid cells within a survey
-      if (length(unique(tmpdat_sf_season_survey$date_jday)) == 1) {
-        jday[, j + 2] <- as.numeric(unique(tmpdat_sf_season_survey$date_jday))
+      # fill jday array. jday is a per-survey detection covariate here - one
+      # value for every grid cell - so a FILEID spanning more than one calendar
+      # day has no single value to store, and the whole replicate structure
+      # (one FILEID = one survey = one column) doesn't hold for it either.
+      # That's a property of the data's FILEID convention, not something this
+      # function can paper over, so it errors - but it names the file and its
+      # dates, since the fix is either a different FILEID convention or
+      # splitting the multi-day file into one per day.
+      survey_jdays <- unique(tmpdat_sf_season_survey$date_jday)
+      if (length(survey_jdays) == 1) {
+        jday[, j + 2] <- as.numeric(survey_jdays)
       } else {
-        print(">1 jday. STOP!")
-        stop()
+        survey_dates <- sort(unique(as.character(tmpdat_sf_season_survey$date_ymd)))
+        stop("FILEID '", season_ufids[j], "' (season ", i, ") spans ",
+             length(survey_jdays), " calendar days: ",
+             paste(survey_dates, collapse = ", "),
+             ". This pipeline treats one FILEID as one single-day survey (one ",
+             "replicate column, with julian day as a per-survey detection ",
+             "covariate), so a multi-day file can't be gridded as a single ",
+             "survey. Split it into one FILEID per day, or restrict ",
+             "survey.fileid_prefixes to a survey type that files one day at a time.",
+             call. = FALSE)
       }
 
       # fill bft array. NA-out grid cells not surveyed (below)

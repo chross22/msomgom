@@ -50,3 +50,26 @@ test_that("max_survs is at least 1 and matches the species array's visit dimensi
   expect_gte(arrays$max_survs, 1)
   expect_equal(dim(arrays$species_arrays[[species_code]])[2], arrays$max_survs + 1)
 })
+
+test_that("a FILEID spanning more than one day errors naming the file and its dates", {
+  configs_dir <- withr::local_tempdir()
+  project_dir <- withr::local_tempdir()
+  path <- generate_config(
+    "multiday_test", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/mock.csv",
+    beg_year = 2018, end_year = 2018, beg_month = 8, end_month = 9
+  )
+  generate_mock_data(path, surveys_per_season = 3, points_per_survey = 8, seed = 5)
+  config <- load_config(path)
+  prep <- prep_survey_data(config)
+
+  # relabel one survey's records as a second day of the survey before it, so a
+  # single FILEID covers two calendar days - the multi-day file convention this
+  # pipeline's one-FILEID-is-one-survey replicate structure can't represent
+  fids <- unique(prep$tmpdat$FILEID)
+  moved <- prep$tmpdat$FILEID == fids[2]
+  prep$tmpdat$FILEID[moved] <- fids[1]
+
+  expect_error(build_detection_arrays(prep$tmpdat, prep$season_info, config),
+               paste0("FILEID '", fids[1], "'.*spans 2 calendar days"))
+})
