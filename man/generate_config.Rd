@@ -71,9 +71,13 @@ OneDrive is usually \code{"business"}}
 
 \item{output_dir}{directory for model outputs, relative to \code{project_dir} unless absolute}
 
-\item{platform_code}{NARWC \code{PLATFORM} code for the survey platform (e.g. 99 = R/V Nereid)}
+\item{platform_code}{NARWC \code{PLATFORM} code(s) for the survey platform (e.g.
+99 = R/V Nereid). Required - \code{prep_survey_data()} errors if it's unset,
+since downstream stages assume one survey platform. More than one code is
+accepted for a deliberately combined analysis.}
 
-\item{fileid_prefixes}{\code{FILEID} first-letter codes to keep (e.g. \code{c("P", "p")} for POP shipboard surveys)}
+\item{fileid_prefixes}{\code{FILEID} first-letter codes to keep (e.g. \code{c("P", "p")}
+for POP shipboard surveys). Required, as \code{platform_code}.}
 
 \item{on_effort_legtypes}{\code{LEGTYPE} codes that count as on-effort (combined
 with \code{LEGSTAGE} begin/continue/end-watch, which - per NARWC 8.A.20 - is

@@ -10,10 +10,10 @@ prep_survey_data(config, verbose = FALSE)
 \item{config}{a config list, as returned by \code{load_config()}}
 
 \item{verbose}{logical; if \code{TRUE}, reports how many records survive each
-filtering step (platform, \code{FILEID} prefix, date range) - useful for
-diagnosing a run that ends up with suspiciously little data. See also
-\code{\link[=diagnose_pipeline]{diagnose_pipeline()}}, which calls this with \code{verbose = TRUE} alongside
-other checks.}
+filtering step (platform, \code{FILEID} prefix, date range), and which of those
+filters were skipped as unset - useful for diagnosing a run that ends up
+with suspiciously little data. See also \code{\link[=diagnose_pipeline]{diagnose_pipeline()}}, which calls
+this with \code{verbose = TRUE} alongside other checks.}
 }
 \value{
 list with:
@@ -28,6 +28,15 @@ Combines what used to be two separate, drifted implementations
 US/Eastern datetime conversion (more correct near UTC day boundaries than
 filtering on the raw YEAR/MONTH/DAY columns) plus data_prep.R's
 BEHAV*-column drop.
+}
+\details{
+\code{survey.platform_code} and \code{survey.fileid_prefixes} are both required, and
+an unset one errors rather than being treated as "keep everything":
+\code{build_detection_arrays()} assumes a single survey type (one \code{FILEID} = one
+single-day survey = one replicate column), and the detection model has no
+platform covariate, so gridding several platforms together produces a fit
+that doesn't mean what it looks like. \code{platform_code} accepts more than one
+code for a genuinely combined analysis, but that's a deliberate choice.
 }
 \examples{
 \dontrun{

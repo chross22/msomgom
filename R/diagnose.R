@@ -85,6 +85,10 @@ diagnose_pipeline <- function(config_path, occ_covariates = NULL) {
   n_on_effort <- sum(prep$dat$on.off.eff == 1)
   if (nrow(prep$dat) == 0) {
     fail("0 records survived filtering - see the warning above for which filter did it")
+    # stop here rather than handing an empty dataset to build_detection_arrays(),
+    # which fails with an internal type error that says nothing about the real cause
+    cat("\nStopped: no records to grid. Fix the filters above before continuing.\n")
+    return(invisible(list(config = config, prep = prep)))
   } else if (n_on_effort == 0) {
     fail("0 on-effort records - see the warning above")
   } else {

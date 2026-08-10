@@ -7,12 +7,20 @@
 #' filtering on the raw YEAR/MONTH/DAY columns) plus data_prep.R's
 #' BEHAV*-column drop.
 #'
+#' `survey.platform_code` and `survey.fileid_prefixes` are both required, and
+#' an unset one errors rather than being treated as "keep everything":
+#' `build_detection_arrays()` assumes a single survey type (one `FILEID` = one
+#' single-day survey = one replicate column), and the detection model has no
+#' platform covariate, so gridding several platforms together produces a fit
+#' that doesn't mean what it looks like. `platform_code` accepts more than one
+#' code for a genuinely combined analysis, but that's a deliberate choice.
+#'
 #' @param config a config list, as returned by `load_config()`
 #' @param verbose logical; if `TRUE`, reports how many records survive each
-#'   filtering step (platform, `FILEID` prefix, date range) - useful for
-#'   diagnosing a run that ends up with suspiciously little data. See also
-#'   [diagnose_pipeline()], which calls this with `verbose = TRUE` alongside
-#'   other checks.
+#'   filtering step (platform, `FILEID` prefix, date range), and which of those
+#'   filters were skipped as unset - useful for diagnosing a run that ends up
+#'   with suspiciously little data. See also [diagnose_pipeline()], which calls
+#'   this with `verbose = TRUE` alongside other checks.
 #' @return list with:
 #'   \item{dat}{the full cleaned dataset}
 #'   \item{tmpdat}{a reduced dataset with just the columns needed for gridding}
@@ -99,18 +107,43 @@ prep_survey_data <- function(config, verbose = FALSE) {
   dat <- dat |>
     dplyr::select(-starts_with("BEHAV", ignore.case = FALSE, vars = NULL))
 
-  # restrict to the configured survey vessel
+  # restrict to the configured survey vessel. Both this and the FILEID-prefix
+  # filter below are required, not optional: downstream stages assume a single
+  # survey type (build_detection_arrays() treats one FILEID as one single-day
+  # survey and sizes its arrays by the per-season FILEID count, and the
+  # detection model has no platform covariate to absorb the difference between
+  # a ship km and an aerial km of effort). An unset field is a config mistake
+  # rather than a request to grid everything, so say so instead of proceeding.
+  platform_code <- unlist(config$survey$platform_code)
+  if (length(platform_code) == 0) {
+    stop("survey.platform_code is not set. Set it to the PLATFORM code(s) this ",
+         "analysis covers - filtering to one survey platform is required, since ",
+         "downstream stages assume a single survey type. See ?generate_config.")
+  }
+  if (!("PLATFORM" %in% names(dat))) {
+    stop("survey.platform_code is set to ", paste(platform_code, collapse = "/"),
+         " but the data file has no PLATFORM column. Columns found: ",
+         paste(names(dat), collapse = ", "),
+         ". See ?standardize_survey_columns for the aliases it recognizes.")
+  }
   dat <- dat |>
-    filter(PLATFORM == config$survey$platform_code)
-  say(nrow(dat), " remain after filtering to PLATFORM == ", config$survey$platform_code)
+    filter(PLATFORM %in% platform_code)
+  say(nrow(dat), " remain after filtering to PLATFORM in ",
+      paste(platform_code, collapse = "/"))
 
   # keep only the configured survey types (FILEID's first character), e.g. "P"/"p" for POP shipboard surveys
+  fileid_prefixes <- unlist(config$survey$fileid_prefixes)
+  if (length(fileid_prefixes) == 0) {
+    stop("survey.fileid_prefixes is not set. Set it to the FILEID first-letter ",
+         "code(s) this analysis covers (e.g. \"P\"/\"p\" for POP shipboard ",
+         "surveys) - filtering to one survey type is required. See ?generate_config.")
+  }
   dat <- dat |>
     mutate(fileid_prefix = str_sub(FILEID, start = 1, end = 1)) |>
-    filter(fileid_prefix %in% unlist(config$survey$fileid_prefixes)) |>
+    filter(fileid_prefix %in% fileid_prefixes) |>
     dplyr::select(-fileid_prefix)
   say(nrow(dat), " remain after filtering FILEID to prefix(es) ",
-      paste(unlist(config$survey$fileid_prefixes), collapse = "/"))
+      paste(fileid_prefixes, collapse = "/"))
 
   # convert the survey's time-of-day (HHMMSS, archived in GMT) + date into a
   # real US/Eastern datetime.
@@ -142,7 +175,8 @@ prep_survey_data <- function(config, verbose = FALSE) {
     warning("No records remain after the platform/FILEID/date filters. Check ",
             "survey.platform_code, survey.fileid_prefixes, and dates.* against ",
             "what's actually in the data file - run prep_survey_data(config, verbose = TRUE) ",
-            "to see which filter dropped everything, or diagnose_pipeline(config).", call. = FALSE)
+            "to see which filter dropped everything, or diagnose_pipeline(config).",
+            call. = FALSE)
   }
 
   # create seasons matrix, and assign each record its season (based on US/Eastern local time)

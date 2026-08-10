@@ -1,5 +1,15 @@
 # msomgom (development version)
 
+* `survey.platform_code` and `survey.fileid_prefixes` are now checked rather
+  than assumed: an unset one errors saying which is missing, instead of
+  silently filtering every record away (`PLATFORM == NULL` matches nothing).
+  They stay required - `build_detection_arrays()` assumes a single survey type,
+  and the detection model has no platform covariate - but `platform_code` now
+  accepts several codes for a deliberately combined analysis. Setting
+  `platform_code` for a file with no `PLATFORM` column also errors saying so.
+  `diagnose_pipeline()` stops at the survey-data step when zero records survive
+  filtering, rather than continuing into `build_detection_arrays()` and
+  reporting an internal type error that says nothing about the real cause.
 * New `standardize_survey_columns()`, now called automatically at the start
   of `prep_survey_data()`: renames a real-world survey CSV's columns to the
   exact NARWC names this pipeline expects whenever a case-insensitive match

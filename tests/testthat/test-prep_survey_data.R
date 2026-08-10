@@ -130,6 +130,33 @@ test_that("prep_survey_data warns when zero records survive the platform/FILEID/
   expect_equal(nrow(prep$dat), 0)
 })
 
+test_that("an unset platform_code/fileid_prefixes errors rather than keeping everything", {
+  dat <- make_hand_built_record()
+
+  config <- make_hand_built_config(dat, "no_platform_test", platform_code = NULL)
+  expect_error(prep_survey_data(config), "survey.platform_code is not set")
+
+  config <- make_hand_built_config(dat, "no_prefix_test", fileid_prefixes = NULL)
+  expect_error(prep_survey_data(config), "survey.fileid_prefixes is not set")
+})
+
+test_that("platform_code accepts more than one code", {
+  dat <- rbind(make_hand_built_record(EVENTNO = 1, PLATFORM = 99),
+               make_hand_built_record(EVENTNO = 2, PLATFORM = 107))
+  config <- make_hand_built_config(dat, "multi_platform_test", platform_code = c(99, 107))
+
+  prep <- prep_survey_data(config)
+  expect_setequal(prep$dat$PLATFORM, c(99, 107))
+})
+
+test_that("a set platform_code with no PLATFORM column errors clearly rather than dropping everything", {
+  dat <- make_hand_built_record()
+  dat$PLATFORM <- NULL
+  config <- make_hand_built_config(dat, "no_platform_col_test")
+
+  expect_error(prep_survey_data(config), "no PLATFORM column")
+})
+
 test_that("prep_survey_data warns on a record with no season covering its date", {
   # Aug 20 is within the configured month (8) but outside the configured
   # season's day-range (1-15) below, so it should get season = NA
