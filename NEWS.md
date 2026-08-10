@@ -1,5 +1,15 @@
 # msomgom (development version)
 
+* New `standardize_survey_columns()`, now called automatically at the start
+  of `prep_survey_data()`: renames a real-world survey CSV's columns to the
+  exact NARWC names this pipeline expects whenever a case-insensitive match
+  or a common alias is found (e.g. `Event`/`Event No.` -> `EVENTNO`,
+  `Sp. Code` -> `SPECCODE`), so a real export doesn't need manual renaming
+  first. `ALT` (altitude) gets a further fallback: if still missing after
+  alias matching, every record is given a constant default (750, overridable
+  via `alt_default`) with a warning, since this pipeline's own filtering
+  doesn't use it. A genuinely required column that can't be matched at all
+  still errors clearly, listing what was and wasn't found.
 * New `diagnose_pipeline()`: runs `prep_survey_data()`/`build_detection_arrays()`
   (never JAGS) and reports the most common reasons a run fails, hangs, or
   produces meaningless output - a filter that leaves nothing, a study-area

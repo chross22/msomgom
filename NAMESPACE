@@ -23,6 +23,7 @@ export(prep_survey_data)
 export(regular_windows)
 export(run_occupancy_model)
 export(season_windows_from_config)
+export(standardize_survey_columns)
 import(dplyr)
 import(sf)
 importFrom(grDevices,

@@ -435,6 +435,18 @@ format (Kenney 2021). `data/` and `output/` are gitignored — real survey data
 has its own data-sharing terms and shouldn't be committed here, and model
 outputs are regenerable from a run.
 
+A real export's column names rarely match the NARWC schema exactly (`Event`
+instead of `EVENTNO`, `Sp. Code` instead of `SPECCODE`, ...).
+`prep_survey_data()` runs `standardize_survey_columns()` on the raw CSV
+first, which renames columns to their canonical name on a case-insensitive
+match or a small list of common aliases, so this usually doesn't need manual
+renaming first. `ALT` (altitude) additionally defaults to `750` if it's
+missing entirely, since this pipeline's own filtering doesn't use it. A
+column it genuinely can't match errors clearly, naming what's missing and
+what was actually found - see `?standardize_survey_columns` for the alias
+list, or call it directly to check your own file before running the full
+pipeline: `standardize_survey_columns(readr::read_csv("data/survey_data.csv"))`.
+
 ### Fetching survey data (Google Drive / OneDrive)
 
 If `paths.data_file` doesn't exist locally, `prep_survey_data()` can fetch it

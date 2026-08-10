@@ -53,6 +53,7 @@ Other pipeline stages:
 \code{\link[=load_config]{load_config()}},
 \code{\link[=makeSeasons]{makeSeasons()}},
 \code{\link[=padstr0]{padstr0()}},
-\code{\link[=prep_survey_data]{prep_survey_data()}}
+\code{\link[=prep_survey_data]{prep_survey_data()}},
+\code{\link[=standardize_survey_columns]{standardize_survey_columns()}}
 }
 \concept{pipeline stages}

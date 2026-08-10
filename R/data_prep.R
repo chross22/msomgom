@@ -70,29 +70,28 @@ prep_survey_data <- function(config, verbose = FALSE) {
     }
   }
 
-  ## 1. import data
-  dat <- read_csv(file = data_file,
-                  col_types = cols(FILEID = col_character(),
-                                   EVENTNO = col_double(),
-                                   MONTH = col_double(),
-                                   DAY = col_double(),
-                                   YEAR = col_double(),
-                                   GMT = col_double(),
-                                   LATITUDE = col_double(),
-                                   LONGITUDE = col_double(),
-                                   LEGTYPE = col_double(),
-                                   LEGSTAGE = col_double(),
-                                   ALT = col_double(),
-                                   HEADING = col_double(),
-                                   WX = col_character(),
-                                   CLOUD = col_double(),
-                                   VISIBLTY = col_double(),
-                                   BEAUFORT = col_double(),
-                                   SPECCODE = col_character(),
-                                   IDREL = col_double(),
-                                   NUMBER = col_double(),
-                                   CONFIDNC = col_double())
-  )
+  ## 1. import data. Read with guessed types first (rather than a fixed
+  ## col_types spec keyed on exact NARWC names), since a real export's column
+  ## names commonly differ - standardize_survey_columns() renames what it can
+  ## recognize before the columns this pipeline actually needs are required
+  ## and coerced to their expected types below.
+  dat <- read_csv(file = data_file, show_col_types = FALSE)
+  dat <- standardize_survey_columns(dat)
+
+  numeric_cols <- c("EVENTNO", "MONTH", "DAY", "YEAR", "GMT", "LATITUDE", "LONGITUDE",
+                     "LEGTYPE", "LEGSTAGE", "ALT", "HEADING", "CLOUD", "VISIBLTY",
+                     "BEAUFORT", "IDREL", "NUMBER", "CONFIDNC")
+  character_cols <- c("FILEID", "WX", "SPECCODE")
+  still_missing <- setdiff(c(numeric_cols, character_cols), names(dat))
+  if (length(still_missing) > 0) {
+    stop("Required column(s) not found, even after case-insensitive/alias matching: ",
+         paste(still_missing, collapse = ", "), ". Columns found in the file: ",
+         paste(names(dat), collapse = ", "), ". See ?standardize_survey_columns for ",
+         "the aliases it recognizes, or rename the column(s) in the source file.")
+  }
+  dat <- dat |>
+    mutate(across(all_of(numeric_cols), as.numeric)) |>
+    mutate(across(all_of(character_cols), as.character))
 
   say(nrow(dat), " records read from ", data_file)
 

@@ -43,6 +43,7 @@ Other pipeline stages:
 \code{\link[=load_config]{load_config()}},
 \code{\link[=makeSeasons]{makeSeasons()}},
 \code{\link[=prep_survey_data]{prep_survey_data()}},
-\code{\link[=run_occupancy_model]{run_occupancy_model()}}
+\code{\link[=run_occupancy_model]{run_occupancy_model()}},
+\code{\link[=standardize_survey_columns]{standardize_survey_columns()}}
 }
 \concept{pipeline stages}
