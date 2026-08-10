@@ -4,10 +4,16 @@
 \alias{prep_survey_data}
 \title{Load and clean the vessel survey CSV}
 \usage{
-prep_survey_data(config)
+prep_survey_data(config, verbose = FALSE)
 }
 \arguments{
 \item{config}{a config list, as returned by \code{load_config()}}
+
+\item{verbose}{logical; if \code{TRUE}, reports how many records survive each
+filtering step (platform, \code{FILEID} prefix, date range) - useful for
+diagnosing a run that ends up with suspiciously little data. See also
+\code{\link[=diagnose_pipeline]{diagnose_pipeline()}}, which calls this with \code{verbose = TRUE} alongside
+other checks.}
 }
 \value{
 list with:
@@ -28,16 +34,22 @@ BEHAV*-column drop.
 config <- load_config("configs/bof_riwh.yaml")
 prep <- prep_survey_data(config)
 prep$season_info$num_ssn
+
+# see how many records each filter step drops
+prep <- prep_survey_data(config, verbose = TRUE)
 }
 }
 \seealso{
 \code{\link[=load_config]{load_config()}}, which produces \code{config}; \code{\link[=build_detection_arrays]{build_detection_arrays()}},
-the next pipeline stage, which takes this function's \code{tmpdat}/\code{season_info}
+the next pipeline stage, which takes this function's \code{tmpdat}/\code{season_info};
+\code{\link[=diagnose_pipeline]{diagnose_pipeline()}}, for a friendlier pre-flight check than reading this
+function's warnings after the fact
 
 Other pipeline stages:
 \code{\link[=build_detection_arrays]{build_detection_arrays()}},
 \code{\link[=build_whale_model_code]{build_whale_model_code()}},
 \code{\link[=cleanup_outputs]{cleanup_outputs()}},
+\code{\link[=diagnose_pipeline]{diagnose_pipeline()}},
 \code{\link[=evaluate_occupancy_model]{evaluate_occupancy_model()}},
 \code{\link[=fit_occupancy_model]{fit_occupancy_model()}},
 \code{\link[=load_config]{load_config()}},

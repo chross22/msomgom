@@ -52,6 +52,7 @@ function's return value directly as \code{arrays}
 Other pipeline stages:
 \code{\link[=build_whale_model_code]{build_whale_model_code()}},
 \code{\link[=cleanup_outputs]{cleanup_outputs()}},
+\code{\link[=diagnose_pipeline]{diagnose_pipeline()}},
 \code{\link[=evaluate_occupancy_model]{evaluate_occupancy_model()}},
 \code{\link[=fit_occupancy_model]{fit_occupancy_model()}},
 \code{\link[=load_config]{load_config()}},

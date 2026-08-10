@@ -40,9 +40,11 @@ load_config <- function(path) {
     config$paths$output_dir <- file.path(project_dir, config$paths$output_dir)
   }
 
-  if (!file.exists(config$paths$data_file) && is.null(config$paths$google_drive_filename)) {
+  if (!file.exists(config$paths$data_file) &&
+        is.null(config$paths$google_drive_filename) && is.null(config$paths$onedrive_filename)) {
     stop("Data file not found at '", config$paths$data_file,
-         "', and paths.google_drive_filename is not set to allow downloading it.")
+         "', and neither paths.google_drive_filename nor paths.onedrive_filename ",
+         "is set to allow downloading it.")
   }
 
   # seasons: list of list(begin = c(m,d), end = c(m,d)) -> ssn_beg / ssn_end matrices

@@ -81,3 +81,96 @@ test_that("survey.on_effort_legtypes controls which LEGTYPE codes count as on-ef
   prep_custom <- prep_survey_data(load_config(path))
   expect_equal(prep_custom$dat$on.off.eff, c(0, 1))
 })
+
+test_that("verbose = TRUE reports row counts through each filter step; FALSE (the default) is silent", {
+  config <- load_config(make_prepped_config())
+  expect_message(prep_survey_data(config, verbose = TRUE), "records read from")
+  expect_no_message(prep_survey_data(config))
+})
+
+make_hand_built_config <- function(dat, name = "hand_built_test",
+                                    beg_year = 2018, end_year = 2018,
+                                    beg_month = 8, end_month = 9, ...) {
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  data_dir <- file.path(project_dir, "data")
+  dir.create(data_dir, recursive = TRUE)
+  data_file <- file.path(data_dir, "survey.csv")
+  write.csv(dat, data_file, row.names = FALSE, na = "")
+
+  path <- generate_config(
+    name, configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/survey.csv",
+    beg_year = beg_year, end_year = end_year, beg_month = beg_month, end_month = end_month,
+    ...
+  )
+  load_config(path)
+}
+
+make_hand_built_record <- function(...) {
+  defaults <- list(
+    FILEID = "P1001a", EVENTNO = 1, PLATFORM = 99,
+    MONTH = 8, DAY = 10, YEAR = 2018, GMT = 120000,
+    LATITUDE = 44.6, LONGITUDE = -66.4,
+    LEGTYPE = 5, LEGSTAGE = 1,
+    ALT = NA, HEADING = 0, WX = "C", CLOUD = 1,
+    VISIBLTY = 3, BEAUFORT = 2,
+    SPECCODE = NA, IDREL = NA, NUMBER = NA, CONFIDNC = NA,
+    BEHAV1 = NA, BEHAV2 = NA
+  )
+  overrides <- list(...)
+  do.call(data.frame, modifyList(defaults, overrides))
+}
+
+test_that("prep_survey_data warns when zero records survive the platform/FILEID/date filters", {
+  dat <- make_hand_built_record(PLATFORM = 1) # doesn't match the default platform_code (99)
+  config <- make_hand_built_config(dat, "zero_rows_test")
+
+  expect_warning(prep <- prep_survey_data(config), "No records remain")
+  expect_equal(nrow(prep$dat), 0)
+})
+
+test_that("prep_survey_data warns on a record with no season covering its date", {
+  # Aug 20 is within the configured month (8) but outside the configured
+  # season's day-range (1-15) below, so it should get season = NA
+  dat <- make_hand_built_record(DAY = 20)
+  config <- make_hand_built_config(
+    dat, "season_gap_test", end_month = 8,
+    seasons = list(list(begin = c(8, 1), end = c(8, 15)))
+  )
+
+  expect_warning(prep <- prep_survey_data(config), "no season")
+  expect_true(is.na(prep$dat$season))
+})
+
+test_that("prep_survey_data warns when zero records are on-effort", {
+  dat <- make_hand_built_record(VISIBLTY = 1) # fails the on-effort visibility check
+  config <- make_hand_built_config(dat, "zero_effort_test")
+
+  expect_warning(prep <- prep_survey_data(config), "No on-effort records")
+  expect_equal(prep$dat$on.off.eff, 0)
+})
+
+test_that("prep_survey_data errors clearly when the data file is missing and no remote source is configured", {
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  config <- list(paths = list(
+    data_file = file.path(project_dir, "nope.csv"),
+    google_drive_filename = NULL, onedrive_filename = NULL
+  ))
+  expect_error(prep_survey_data(config), "neither google_drive_filename nor onedrive_filename")
+})
+
+test_that("prep_survey_data reports a clear error when Microsoft365R isn't installed for a OneDrive source", {
+  skip_if(requireNamespace("Microsoft365R", quietly = TRUE),
+          "Microsoft365R is installed; can't exercise the missing-package path")
+
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  path <- generate_config(
+    "onedrive_test", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/does_not_exist.csv", onedrive_filename = "survey/data.csv"
+  )
+  config <- load_config(path)
+
+  expect_error(prep_survey_data(config), "Microsoft365R")
+})

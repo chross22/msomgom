@@ -6,21 +6,29 @@ make_temp_project <- function() {
   project_dir
 }
 
-test_that("generate_config writes a YAML file and errors on overwrite without permission", {
+test_that("generate_config writes a YAML file and warns (without overwriting) when it already exists", {
   configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
   project_dir <- make_temp_project()
 
-  path <- generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir)
+  path <- generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir,
+                           beg_year = 2015, end_year = 2018)
   expect_true(file.exists(path))
   expect_equal(path, file.path(configs_dir, "test_run.yaml"))
+  original_contents <- readLines(path)
 
-  expect_error(
-    generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir),
+  expect_warning(
+    result <- generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir,
+                               beg_year = 1999, end_year = 2000),
     "already exists"
   )
+  expect_equal(result, path)
+  expect_equal(readLines(path), original_contents) # left unchanged, not overwritten
+
   expect_no_error(
-    generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir, overwrite = TRUE)
+    generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir,
+                     beg_year = 1999, end_year = 2000, overwrite = TRUE)
   )
+  expect_equal(load_config(path)$dates$beg_year, 1999) # overwrite = TRUE actually replaced it
 })
 
 test_that("generate_config() -> load_config() round-trips the fields that matter", {
@@ -91,13 +99,48 @@ test_that("load_config resolves data_file/output_dir relative to project_dir", {
   expect_true(startsWith(config$paths$output_dir, normalizePath(project_dir)))
 })
 
-test_that("load_config errors clearly when the data file is missing and no google_drive_filename is set", {
+test_that("load_config errors clearly when the data file is missing and no remote source is set", {
   configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
   project_dir <- withr::local_tempdir(.local_envir = parent.frame()) # no data/ subfolder created
   path <- generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir,
                            data_file = "data/does_not_exist.csv")
 
   expect_error(load_config(path), "Data file not found")
+})
+
+test_that("load_config does not error when the data file is missing but onedrive_filename is set", {
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  path <- generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir,
+                           data_file = "data/does_not_exist.csv",
+                           onedrive_filename = "survey/data.csv")
+
+  config <- expect_no_error(load_config(path))
+  expect_equal(config$paths$onedrive_filename, "survey/data.csv")
+  expect_equal(config$paths$onedrive_type, "personal")
+})
+
+test_that("generate_config round-trips onedrive_filename/onedrive_type", {
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  path <- generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir,
+                           data_file = "data/does_not_exist.csv",
+                           onedrive_filename = "survey/data.csv", onedrive_type = "business")
+
+  config <- load_config(path)
+  expect_equal(config$paths$onedrive_filename, "survey/data.csv")
+  expect_equal(config$paths$onedrive_type, "business")
+})
+
+test_that("generate_config rejects an invalid onedrive_type", {
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+
+  expect_error(
+    generate_config("test_run", configs_dir = configs_dir, project_dir = project_dir,
+                     onedrive_filename = "survey/data.csv", onedrive_type = "shared"),
+    "onedrive_type must be"
+  )
 })
 
 test_that("load_config errors when species.active isn't one of species.codes", {

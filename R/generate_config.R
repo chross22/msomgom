@@ -10,12 +10,20 @@
 #'
 #' @param name config name; written to `<configs_dir>/<name>.yaml`
 #' @param configs_dir directory to write the config into
-#' @param overwrite logical; if `FALSE` (the default), errors rather than
-#'   overwriting an existing config with the same `name`
+#' @param overwrite logical; if `FALSE` (the default), warns and leaves an
+#'   existing config with the same `name` unchanged rather than overwriting it
 #' @param project_dir base directory that relative paths in the config resolve against
 #' @param data_file path to the survey CSV, relative to `project_dir` unless absolute
 #' @param google_drive_filename optional; if set and `data_file` is missing,
 #'   `prep_survey_data()` downloads this filename from Google Drive
+#' @param onedrive_filename optional; if set and `data_file` is missing (and
+#'   `google_drive_filename` isn't also set), `prep_survey_data()` downloads
+#'   this path from OneDrive via the `Microsoft365R` package - the path as it
+#'   appears within OneDrive, not a local path
+#' @param onedrive_type `"personal"` (the default) or `"business"` - which
+#'   `Microsoft365R` account type `onedrive_filename` is downloaded from
+#'   (`get_personal_onedrive()`/`get_business_onedrive()`); a shared/org
+#'   OneDrive is usually `"business"`
 #' @param output_dir directory for model outputs, relative to `project_dir` unless absolute
 #' @param platform_code NARWC `PLATFORM` code for the survey platform (e.g. 99 = R/V Nereid)
 #' @param fileid_prefixes `FILEID` first-letter codes to keep (e.g. `c("P", "p")` for POP shipboard surveys)
@@ -101,6 +109,8 @@ generate_config <- function(
   project_dir = ".",
   data_file = "data/survey_data.csv",
   google_drive_filename = NULL,
+  onedrive_filename = NULL,
+  onedrive_type = "personal",
   output_dir = "output",
 
   platform_code = 99,
@@ -164,6 +174,9 @@ generate_config <- function(
   if (!(jags_params %in% c("colext", "Z"))) {
     stop("jags_params must be 'colext' or 'Z', got: ", jags_params)
   }
+  if (!is.null(onedrive_filename) && !(onedrive_type %in% c("personal", "business"))) {
+    stop("onedrive_type must be 'personal' or 'business', got: ", onedrive_type)
+  }
   if (!(active_species %in% species_codes)) {
     stop("active_species ('", active_species, "') must be one of species_codes: ",
          paste(species_codes, collapse = ", "))
@@ -187,6 +200,8 @@ generate_config <- function(
       project_dir = project_dir,
       data_file = data_file,
       google_drive_filename = google_drive_filename,
+      onedrive_filename = onedrive_filename,
+      onedrive_type = onedrive_type,
       output_dir = output_dir
     ),
     survey = list(
@@ -238,7 +253,9 @@ generate_config <- function(
   if (!dir.exists(configs_dir)) dir.create(configs_dir, recursive = TRUE)
   out_path <- file.path(configs_dir, paste0(name, ".yaml"))
   if (file.exists(out_path) && !overwrite) {
-    stop("Config already exists at '", out_path, "'. Pass overwrite = TRUE to replace it.")
+    warning("Config already exists at '", out_path, "' and was left unchanged. ",
+            "Pass overwrite = TRUE to replace it.", call. = FALSE)
+    return(invisible(out_path))
   }
 
   yaml::write_yaml(config, file = out_path)

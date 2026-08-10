@@ -118,6 +118,8 @@ separately, and only if you use them:
 - `terra` (Hijmans et al. 2026) - reading local NetCDF covariate files (`load_covariate_netcdf()`)
 - `mapview`, `tmap`, `webshot` - only if you set `output.make_figs: true` in a config
 - `googledrive` - only if you set `paths.google_drive_filename`
+- `Microsoft365R` - only if you set `paths.onedrive_filename` (see
+  [Fetching survey data](#fetching-survey-data-google-drive--onedrive) below)
 - `datamatch`, `derivoce` - fetching/deriving environmental covariates (see
   [Environmental covariates](#environmental-covariates))
 - `fancyfx` - plotting a fitted covariate's effect (see
@@ -232,6 +234,24 @@ when the model was run with `jags.params: Z`, a naive-vs-modeled occupancy
 comparison per year.
 
 ### Debugging and assessing data/outputs
+
+**Before fitting**, `diagnose_pipeline()` runs the data-prep and grid-building
+stages (never JAGS itself) and reports the most common reasons a run fails,
+hangs, or "succeeds" with meaningless output - a filter that leaves nothing,
+a study-area polygon that misses the survey tracks, a species with zero
+detections, a record that fell outside every configured season, or a
+covariate matrix with the wrong shape:
+
+```r
+library(msomgom)
+diagnose_pipeline("configs/my_run.yaml")
+# with covariates, checked against config$covariates$psi/phi/gamma too:
+diagnose_pipeline("configs/my_run.yaml", occ_covariates = list(sst = sst_avg$sst))
+```
+
+It prints a plain PASS/WARN/FAIL report and returns `list(config, prep,
+arrays)` invisibly (whichever were reached), so you can pick up investigating
+right where it stopped - e.g. `plot_survey_coverage(result$arrays)`.
 
 Three plotting functions, for when a fit looks wrong and you need to see
 *why* rather than just the summary numbers. Each returns the `sf` grid it
@@ -414,6 +434,30 @@ Database](https://www.narwc.org/uploads/1/1/6/6/116623219/sightingsdatabaseusers
 format (Kenney 2021). `data/` and `output/` are gitignored — real survey data
 has its own data-sharing terms and shouldn't be committed here, and model
 outputs are regenerable from a run.
+
+### Fetching survey data (Google Drive / OneDrive)
+
+If `paths.data_file` doesn't exist locally, `prep_survey_data()` can fetch it
+for you first - from Google Drive (`paths.google_drive_filename`, via the
+optional `googledrive` package) or OneDrive (`paths.onedrive_filename`, via
+the optional `Microsoft365R` package). Set at most one; if both are set,
+Google Drive takes priority.
+
+```r
+generate_config("my_run", data_file = "data/survey_data.csv",
+                 onedrive_filename = "Shared/survey_data.csv", # path *within* OneDrive
+                 onedrive_type = "business")                   # "personal" (default) or "business"
+```
+
+`onedrive_filename` is the file's path within OneDrive, not a local path -
+`Microsoft365R::get_personal_onedrive()`/`get_business_onedrive()` resolve it
+via Microsoft Graph, prompting an interactive login on first use. Use
+`onedrive_type = "business"` for an organization/shared OneDrive.
+
+**If OneDrive is already synced to this machine** (the usual case with the
+OneDrive desktop app), none of this is needed - just point `data_file`
+directly at wherever it's synced locally (e.g. `"~/OneDrive - Org/.../survey_data.csv"`),
+and skip `onedrive_filename` entirely.
 
 ## Repository layout
 

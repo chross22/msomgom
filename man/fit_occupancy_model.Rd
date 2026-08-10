@@ -71,6 +71,7 @@ Other pipeline stages:
 \code{\link[=build_detection_arrays]{build_detection_arrays()}},
 \code{\link[=build_whale_model_code]{build_whale_model_code()}},
 \code{\link[=cleanup_outputs]{cleanup_outputs()}},
+\code{\link[=diagnose_pipeline]{diagnose_pipeline()}},
 \code{\link[=evaluate_occupancy_model]{evaluate_occupancy_model()}},
 \code{\link[=load_config]{load_config()}},
 \code{\link[=makeSeasons]{makeSeasons()}},

@@ -11,6 +11,8 @@ generate_config(
   project_dir = ".",
   data_file = "data/survey_data.csv",
   google_drive_filename = NULL,
+  onedrive_filename = NULL,
+  onedrive_type = "personal",
   output_dir = "output",
   platform_code = 99,
   fileid_prefixes = c("P", "p"),
@@ -47,8 +49,8 @@ generate_config(
 
 \item{configs_dir}{directory to write the config into}
 
-\item{overwrite}{logical; if \code{FALSE} (the default), errors rather than
-overwriting an existing config with the same \code{name}}
+\item{overwrite}{logical; if \code{FALSE} (the default), warns and leaves an
+existing config with the same \code{name} unchanged rather than overwriting it}
 
 \item{project_dir}{base directory that relative paths in the config resolve against}
 
@@ -56,6 +58,16 @@ overwriting an existing config with the same \code{name}}
 
 \item{google_drive_filename}{optional; if set and \code{data_file} is missing,
 \code{prep_survey_data()} downloads this filename from Google Drive}
+
+\item{onedrive_filename}{optional; if set and \code{data_file} is missing (and
+\code{google_drive_filename} isn't also set), \code{prep_survey_data()} downloads
+this path from OneDrive via the \code{Microsoft365R} package - the path as it
+appears within OneDrive, not a local path}
+
+\item{onedrive_type}{\code{"personal"} (the default) or \code{"business"} - which
+\code{Microsoft365R} account type \code{onedrive_filename} is downloaded from
+(\code{get_personal_onedrive()}/\code{get_business_onedrive()}); a shared/org
+OneDrive is usually \code{"business"}}
 
 \item{output_dir}{directory for model outputs, relative to \code{project_dir} unless absolute}
 

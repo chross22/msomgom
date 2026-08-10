@@ -116,6 +116,19 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
     meta <- vector("list", n_cov)
     for (c_idx in seq_len(n_cov)) {
       mat <- occ_covariates[[cov_names[c_idx]]] # [num_cells x num_ssn]
+      # array()'s recycling below is silent whenever length(mat) happens to
+      # divide evenly into n.site * n.season * n.year - e.g. a covariate
+      # matrix with the wrong number of columns for this run's season/year
+      # structure would get silently misaligned across sites/years rather
+      # than erroring, and the model would fit "successfully" on wrong data.
+      if (!is.matrix(mat) || nrow(mat) != n.site || ncol(mat) != n.year) {
+        stop("occ_covariates[[\"", cov_names[c_idx], "\"]] has shape [",
+             if (is.matrix(mat)) paste(nrow(mat), "x", ncol(mat)) else class(mat)[1],
+             "] but must be a [", n.site, " x ", n.year,
+             "] matrix (num_cells x num_ssn) to match this run's grid and season/year ",
+             "structure. average_covariates() builds a matrix in exactly this shape - ",
+             "check it was called with this same arrays$area_grid_sf and the right windows.")
+      }
       cov_mean <- mean(mat, na.rm = TRUE)
       cov_sd <- sd(mat, na.rm = TRUE)
       mat.st <- (mat - cov_mean) / cov_sd

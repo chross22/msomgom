@@ -1,5 +1,31 @@
 # msomgom (development version)
 
+* New `diagnose_pipeline()`: runs `prep_survey_data()`/`build_detection_arrays()`
+  (never JAGS) and reports the most common reasons a run fails, hangs, or
+  produces meaningless output - a filter that leaves nothing, a study-area
+  polygon that misses the survey tracks, a species with zero detections, a
+  record outside every configured season, or a covariate matrix with the
+  wrong shape - as a plain PASS/WARN/FAIL report. Meant to run before
+  `run_occupancy_model()`. `prep_survey_data()` also gained a `verbose`
+  argument reporting row counts through each filter step, and now warns
+  (rather than silently proceeding) when zero records survive filtering,
+  when a record falls in the configured month but outside every configured
+  season's day-range, or when zero records end up on-effort.
+* `generate_config(overwrite = FALSE)` (the default) now warns and leaves an
+  existing config unchanged, instead of erroring.
+* Fixed a silent-data-corruption bug: `fit_occupancy_model()` reshaped a
+  covariate matrix into its internal array via `array(dim = ..., data = ...)`
+  without checking its shape first - a covariate matrix with the wrong
+  number of rows/columns for a run's grid would get silently recycled into
+  misaligned values (when the element counts happened to divide evenly)
+  rather than erroring, and the model would fit "successfully" on wrong
+  data. Now validated explicitly before use.
+* Added OneDrive as a second option (alongside Google Drive) for
+  `prep_survey_data()` to fetch `paths.data_file` automatically when it's
+  missing locally: `paths.onedrive_filename` (the path within OneDrive) and
+  `paths.onedrive_type` (`"personal"`, the default, or `"business"` for a
+  shared/org OneDrive), via the optional `Microsoft365R` package. See the
+  README's "Fetching survey data" section.
 * `survey.on_effort_legtypes` is now a config field (default `c(5, 6)`, the
   vessel codes), rather than hardcoded - `prep_survey_data()`'s on-effort
   filter previously only recognized NARWC's ship `LEGTYPE` codes, so every
