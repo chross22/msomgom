@@ -202,3 +202,41 @@ test_that("the substring fallback matches what an exact alias would not", {
   expect_no_warning(out <- standardize_survey_columns(dat))
   expect_equal(out$ALT, 300)
 })
+
+test_that("a populated PLATFORM column wins over an empty one alongside it", {
+  # the common shape: the column literally named PLATFORM is the real one
+  dat <- data.frame(PLATFORM = c(99, 99), Platform_Type = c(NA, NA),
+                    ALT = 750, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_equal(out$PLATFORM, c(99, 99))
+})
+
+test_that("an empty PLATFORM column is displaced by a populated one under another name", {
+  dat <- data.frame(PLATFORM = c(NA, NA), Platform_Code = c(99, 99),
+                    ALT = 750, check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "'PLATFORM' has no values")
+
+  expect_equal(out$PLATFORM, c(99, 99))
+  expect_true(all(is.na(out$PLATFORM_empty))) # the empty one is kept, not dropped
+})
+
+test_that("an empty canonical column stands when nothing populated matches it", {
+  dat <- data.frame(PLATFORM = c(NA, NA), Platform_Type = c(NA, NA),
+                    ALT = 750, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_true("PLATFORM" %in% names(out))
+  expect_false("PLATFORM_empty" %in% names(out)) # nothing to displace it with
+})
+
+test_that("a LATITUDE column isn't claimed by PLATFORM, whose name contains 'lat'", {
+  dat <- data.frame(Lat = 44.6, Long = -66.4, ALT = 750, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_equal(out$LATITUDE, 44.6)
+  expect_false("PLATFORM" %in% names(out))
+})
+
+test_that("an ambiguous match prefers the candidate with data, and says how many each has", {
+  dat <- data.frame(Event = c(NA, NA), EventNum = c(10, 20), ALT = 750)
+  expect_warning(out <- standardize_survey_columns(dat), "EventNum \\(2 value\\(s\\)\\)")
+  expect_equal(out$EVENTNO, c(10, 20))
+})

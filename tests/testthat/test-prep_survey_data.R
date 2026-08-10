@@ -248,3 +248,17 @@ test_that("a zero-padded PLATFORM code matches an unpadded config code", {
 
   expect_equal(nrow(prep_survey_data(config)$dat), 1)
 })
+
+test_that("PLATFORM matches by value: named platforms and zero-padded codes both work", {
+  dat <- rbind(make_hand_built_record(EVENTNO = 1, PLATFORM = "Vessel"),
+               make_hand_built_record(EVENTNO = 2, PLATFORM = "Aerial"))
+
+  # a config that names the platform instead of coding it, matched case-insensitively
+  config <- make_hand_built_config(dat, "named_platform_test", platform_code = "vessel")
+  prep <- prep_survey_data(config)
+  expect_equal(prep$dat$PLATFORM, "Vessel")
+
+  config <- make_hand_built_config(dat, "named_platform_both_test",
+                                   platform_code = c("Vessel", "Aerial"))
+  expect_equal(nrow(prep_survey_data(config)$dat), 2)
+})

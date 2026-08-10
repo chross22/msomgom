@@ -72,10 +72,13 @@ OneDrive is usually \code{"business"}}
 
 \item{output_dir}{directory for model outputs, relative to \code{project_dir} unless absolute}
 
-\item{platform_code}{NARWC \code{PLATFORM} code(s) for the survey platform (e.g.
-99 = R/V Nereid). Required - \code{prep_survey_data()} errors if it's unset,
-since downstream stages assume one survey platform. More than one code is
-accepted for a deliberately combined analysis.}
+\item{platform_code}{\code{PLATFORM} value(s) identifying the survey platform -
+a NARWC code (e.g. 99 = R/V Nereid), or the platform's name for an export
+that writes \code{"Vessel"}/\code{"Aerial"} instead of coding it. Matching is by
+value, so a zero-padded \code{"099"} in the data matches \code{99} here, and text
+matches case-insensitively. Required - \code{prep_survey_data()} errors if it's
+unset, since downstream stages assume one survey platform. More than one
+value is accepted for a deliberately combined analysis.}
 
 \item{fileid_prefixes}{\code{FILEID} first-letter codes to keep (e.g. \code{c("P", "p")}
 for POP shipboard surveys). Required, as \code{platform_code}.}

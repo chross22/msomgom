@@ -140,13 +140,20 @@ prep_survey_data <- function(config, verbose = FALSE) {
          paste(names(dat), collapse = ", "),
          ". See ?standardize_survey_columns for the aliases it recognizes.")
   }
-  # PLATFORM isn't in numeric_cols above (it's dropped before the modeling
-  # columns are assembled), but it's read as text like everything else, and
-  # NARWC writes the code zero-padded - so "099" has to become 99 before it can
-  # be compared against a config that says 99.
-  dat$PLATFORM <- suppressWarnings(as.numeric(dat$PLATFORM))
+  # Match PLATFORM by value, not by type. Everything is read as text, and a
+  # platform can be written more than one way: NARWC's numeric codes are
+  # zero-padded ("099" has to match a config that says 99), while an export
+  # that names its platforms instead of coding them carries "Vessel"/"Aerial",
+  # which must not be coerced to numeric - that would turn every record into
+  # NA and drop the lot. So numbers compare as numbers and text compares as
+  # case-insensitive text.
+  platform_key <- function(x) {
+    x_chr <- trimws(as.character(x))
+    x_num <- suppressWarnings(as.numeric(x_chr))
+    ifelse(is.na(x_num), tolower(x_chr), as.character(x_num))
+  }
   dat <- dat |>
-    filter(PLATFORM %in% platform_code)
+    filter(platform_key(PLATFORM) %in% platform_key(platform_code))
   say(nrow(dat), " remain after filtering to PLATFORM in ",
       paste(platform_code, collapse = "/"))
 

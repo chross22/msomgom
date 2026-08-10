@@ -16,6 +16,13 @@
 # data move between the two without translation.
 survey_column_aliases <- list(
   FILEID = c("fileid", "file", "filename"),
+  # NOT "aerial"/"vessel"-as-a-value: those are PLATFORM *values* in exports
+  # that name their platforms instead of using NARWC's numeric codes (see
+  # prep_survey_data(), which matches either). "vessel" is here as a column
+  # name, since a file that records one boat per row commonly calls the column
+  # that.
+  PLATFORM = c("platform", "platformcode", "platformid", "platformno",
+               "platformtype", "surveyplatform", "vessel"),
   EVENTNO = c("eventno", "event", "eventnum", "eventnumber", "evno", "eventid"),
   MONTH = c("month", "mon", "mo"),
   DAY = c("day", "dy"),
@@ -119,6 +126,9 @@ survey_column_aliases <- list(
 #' @export
 standardize_survey_columns <- function(dat, alt_default = 750) {
   norm <- function(x) gsub("[^a-z0-9]", "", tolower(x))
+  # how many real values a column carries - blanks count as missing, since a
+  # CSV's empty cell can arrive as either NA or "" depending on how it was read
+  n_values <- function(x) sum(!is.na(x) & trimws(as.character(x)) != "")
 
   current_names <- names(dat)
   current_norm <- norm(current_names)
@@ -133,12 +143,23 @@ standardize_survey_columns <- function(dat, alt_default = 750) {
   date_aliases_norm <- norm(c("date", "surveydate", "eventdate", "obsdate", "sightingdate", "gmtdate", "utcdate"))
   reserved <- current_norm %in% date_aliases_norm | grepl("date", current_norm, fixed = TRUE)
 
-  for (canonical in names(survey_column_aliases)) {
-    if (canonical %in% current_names) next # exact match already present
+  # A column that already carries a canonical name, or that gets renamed to one
+  # below, is off-limits to every other canonical's substring fallback. Without
+  # this, PLATFORM normalizes to "platform", which *contains* LATITUDE's "lat"
+  # alias - so a file with a PLATFORM column but no exact LATITUDE column had
+  # its platform renamed to LATITUDE. Any two canonicals whose aliases nest
+  # like that would collide the same way.
+  claimed <- current_names %in% names(survey_column_aliases)
 
-    canon_norm <- norm(canonical)
+  for (canonical in names(survey_column_aliases)) {
+    canon_idx <- which(current_names == canonical)
+    # an exact match already present settles it - unless it's empty, in which
+    # case keep looking: a file can carry both a placeholder column with the
+    # canonical name and a populated one under a different name.
+    if (length(canon_idx) > 0 && n_values(dat[[canon_idx[1]]]) > 0) next
+
     candidates_norm <- norm(c(canonical, survey_column_aliases[[canonical]]))
-    search_idx <- which(!reserved)
+    search_idx <- setdiff(which(!reserved & !claimed), canon_idx)
 
     # 1. exact match against the canonical name or a known alias
     hits <- search_idx[current_norm[search_idx] %in% candidates_norm]
@@ -155,19 +176,48 @@ standardize_survey_columns <- function(dat, alt_default = 750) {
       hits <- search_idx[vapply(search_idx, function(i) {
         x <- current_norm[i]
         nchar(x) > 0 && any(vapply(candidates_norm, function(cand) {
-          grepl(cand, x, fixed = TRUE) || grepl(x, cand, fixed = TRUE)
+          # alias inside the column name, anywhere: "Survey_Alt_ft" for "alt".
+          # Column name inside the alias only as a *prefix*: an abbreviation
+          # shortens from the end ("event" for "eventno", "long" for
+          # "longitude"), so requiring a prefix keeps that while rejecting
+          # coincidental interior hits - "lat" sits inside "platform", which
+          # otherwise made a LATITUDE column match PLATFORM.
+          grepl(cand, x, fixed = TRUE) || startsWith(cand, x)
         }, logical(1)))
       }, logical(1))]
     }
 
     if (length(hits) == 0) next
+
+    # Rank the matches by how many values they actually carry, most first
+    # (ties keep file order). Real exports carry columns that exist but were
+    # never filled - an unused duplicate, a field the recorder skipped - and
+    # picking by position alone hands the pipeline a column of NA while the
+    # populated one sits next to it under a name nobody enumerated.
+    hit_values <- vapply(hits, function(i) n_values(dat[[i]]), integer(1))
+    ord <- order(-hit_values, hits)
+    hits <- hits[ord]
+    hit_values <- hit_values[ord]
+
     if (length(hits) > 1) {
       warning("Multiple columns look like '", canonical, "': ",
-              paste(current_names[hits], collapse = ", "),
+              paste0(current_names[hits], " (", hit_values, " value(s))", collapse = ", "),
               " - using '", current_names[hits[1]], "'. Rename the others if this is wrong.",
               call. = FALSE)
     }
+
+    if (length(canon_idx) > 0) {
+      # the column already named `canonical` is empty (checked above); only
+      # displace it if what we found is actually populated
+      if (hit_values[1] == 0) next
+      warning("Column '", canonical, "' has no values; using '", current_names[hits[1]],
+              "' (", hit_values[1], " value(s)) instead. The empty column was kept as '",
+              canonical, "_empty'.", call. = FALSE)
+      names(dat)[canon_idx[1]] <- paste0(canonical, "_empty")
+    }
+
     names(dat)[hits[1]] <- canonical
+    claimed[hits[1]] <- TRUE
     current_names <- names(dat)
     current_norm <- norm(current_names)
   }
@@ -179,9 +229,15 @@ standardize_survey_columns <- function(dat, alt_default = 750) {
   missing_date_parts <- setdiff(c("YEAR", "MONTH", "DAY", "TIME"), names(dat))
   if (length(missing_date_parts) > 0) {
     date_hits <- which(reserved)
+    # same value-first ranking as the per-column matching above
+    date_values <- vapply(date_hits, function(i) n_values(dat[[i]]), integer(1))
+    date_ord <- order(-date_values, date_hits)
+    date_hits <- date_hits[date_ord]
+    date_values <- date_values[date_ord]
     if (length(date_hits) >= 1) {
       if (length(date_hits) > 1) {
-        warning("Multiple columns look like a date column: ", paste(current_names[date_hits], collapse = ", "),
+        warning("Multiple columns look like a date column: ",
+                paste0(current_names[date_hits], " (", date_values, " value(s))", collapse = ", "),
                 " - using '", current_names[date_hits[1]], "' to fill in ",
                 paste(missing_date_parts, collapse = "/"), ".", call. = FALSE)
       }

@@ -1,5 +1,27 @@
 # msomgom (development version)
 
+* `standardize_survey_columns()` now prefers the candidate column that actually
+  has data. When more than one column matches a canonical name, they're ranked
+  by how many values they carry (ties keep file order) instead of taking
+  whichever came first, and the ambiguity warning reports the counts it ranked
+  on. A column with the canonical name but no values in it is displaced by a
+  populated match under another name, and kept as `<CANONICAL>_empty` rather
+  than dropped. Same ranking applies when several columns look like the date
+  column.
+* `PLATFORM` joined the alias table, so a file calling it `Platform_Code`,
+  `Platform_Type`, or `Vessel` no longer has to be renamed by hand. Two fixes
+  came with it: a column already carrying a canonical name is now off-limits to
+  every other canonical's substring fallback (`PLATFORM` normalizes to
+  `platform`, which contains `LATITUDE`'s `lat` alias - so a file with a
+  `PLATFORM` column but no exact `LATITUDE` column had its platform renamed to
+  `LATITUDE`), and the fallback's "column name inside the alias" direction now
+  requires a prefix, since an abbreviation shortens from the end (`event` for
+  `eventno`) rather than landing in the middle.
+* `survey.platform_code` matches by value rather than by type: a zero-padded
+  `"099"` in the data matches a config that says `99`, and an export that names
+  its platforms (`"Vessel"`, `"Aerial"`) instead of coding them numerically can
+  be matched by name, case-insensitively.
+
 * The survey CSV is now read with every column as text instead of letting
   `readr` guess. Guessing corrupted values this pipeline depends on: a `FILEID`
   column whose values are all `"F"` guesses as logical and arrived as

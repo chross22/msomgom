@@ -25,10 +25,13 @@
 #'   (`get_personal_onedrive()`/`get_business_onedrive()`); a shared/org
 #'   OneDrive is usually `"business"`
 #' @param output_dir directory for model outputs, relative to `project_dir` unless absolute
-#' @param platform_code NARWC `PLATFORM` code(s) for the survey platform (e.g.
-#'   99 = R/V Nereid). Required - `prep_survey_data()` errors if it's unset,
-#'   since downstream stages assume one survey platform. More than one code is
-#'   accepted for a deliberately combined analysis.
+#' @param platform_code `PLATFORM` value(s) identifying the survey platform -
+#'   a NARWC code (e.g. 99 = R/V Nereid), or the platform's name for an export
+#'   that writes `"Vessel"`/`"Aerial"` instead of coding it. Matching is by
+#'   value, so a zero-padded `"099"` in the data matches `99` here, and text
+#'   matches case-insensitively. Required - `prep_survey_data()` errors if it's
+#'   unset, since downstream stages assume one survey platform. More than one
+#'   value is accepted for a deliberately combined analysis.
 #' @param fileid_prefixes `FILEID` first-letter codes to keep (e.g. `c("P", "p")`
 #'   for POP shipboard surveys). Required, as `platform_code`.
 #' @param split_surveys_by how to identify one survey (one replicate visit) in
@@ -220,7 +223,13 @@ generate_config <- function(
       output_dir = output_dir
     ),
     survey = list(
-      platform_code = if (length(platform_code) == 0) NULL else as.integer(platform_code),
+      # numeric codes stay numeric in the YAML; a file that names its platforms
+      # ("Vessel"/"Aerial") rather than coding them keeps its text as written
+      platform_code = if (length(platform_code) == 0) NULL else {
+        as_num <- suppressWarnings(as.numeric(platform_code))
+        vals <- if (anyNA(as_num)) as.character(platform_code) else as.integer(as_num)
+        if (length(vals) == 1) vals else as.list(vals)
+      },
       fileid_prefixes = as.list(fileid_prefixes),
       on_effort_legtypes = as.list(as.integer(on_effort_legtypes)),
       split_surveys_by = match.arg(split_surveys_by, c("none", "date", "date_platform"))
