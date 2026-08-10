@@ -189,6 +189,30 @@ See the original approved plan for the complete config schema and verification s
 `~/.claude/plans/flickering-mapping-octopus.md` (local to the machine this was written on;
 copied here for reference since it isn't part of this repo).
 
+## Diagnostic plots
+
+Until this point the only visual output was `evaluate_occupancy_model()`'s MCMC trace/density
+plots (`plot(fit)` on the `mcmc.list`) and `build_detection_arrays()`'s optional per-survey
+`mapview` HTML maps (`output.make_figs: true`) — nothing for inspecting the data or the fit
+*spatially*, which is usually the fastest way to tell whether a bad fit is a data problem
+(sparse coverage, a grid that doesn't line up with the study area) or a modeling one.
+
+`R/plot_diagnostics.R` adds three functions, all built directly from the same arrays the
+model fits on (not a rederivation from the raw survey CSV) and all using base `plot()` on an
+`sf` object (`plot.sf`) rather than adding a new dependency:
+
+- `plot_survey_coverage(arrays, season = NULL)` — number of surveys per grid cell, from
+  `arrays$reps`.
+- `plot_sightings(arrays, species, season = NULL)` — sighting counts per grid cell, from
+  `arrays$species_arrays[[species]]`.
+- `plot_occupancy_map(fit, arrays, year = NULL)` — posterior mean occupancy (`Z`) per grid
+  cell for one year, for a fit run with `jags_params = "Z"`. Reports the same numbers as
+  `compare_naive_vs_modeled_occupancy()`'s table, spatially instead of per-year.
+
+Each returns the `sf` grid (with the plotted column added) invisibly, so the underlying
+values are inspectable or pipeable into `mapview()` for an interactive version, without
+requiring `mapview` itself as anything more than an optional convenience.
+
 ## Package conversion
 
 The pipeline was later converted from a collection of `source()`d scripts into a proper,

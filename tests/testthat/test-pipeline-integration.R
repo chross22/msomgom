@@ -73,6 +73,25 @@ test_that("jags.params = 'Z' tracks occupancy states and evaluate_occupancy_mode
   expect_true(all(c("year", "n_sites", "naive_psi", "modeled_psi") %in% names(result$evaluation$occupancy_comparison)))
 })
 
+test_that("plot_occupancy_map's occupancy column matches a hand-computed posterior mean Z", {
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off())
+
+  config_path <- make_fast_config("pipeline_test_map", jags_params = "Z")
+  config <- load_config(config_path)
+  prep <- prep_survey_data(config)
+  arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
+  fit <- fit_occupancy_model(arrays, config)
+
+  grid <- plot_occupancy_map(fit, arrays, year = 1)
+  expect_s3_class(grid, "sf")
+
+  z_mat <- as.matrix(fit)
+  z_cols <- grep("^Z\\[.*,1\\]$", colnames(z_mat), value = TRUE) # year 1 only
+  expected <- colMeans(z_mat[, z_cols, drop = FALSE])
+  expect_equal(sort(unname(grid$occupancy)), sort(unname(expected)))
+})
+
 test_that("results save to output_dir when jags.save_results is true (the default)", {
   config_path <- make_fast_config("pipeline_test_save")
   config <- load_config(config_path)

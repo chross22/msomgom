@@ -204,6 +204,42 @@ posterior), trace/density plots saved to `<output_dir>/mcmc_diagnostics.pdf`, an
 when the model was run with `jags.params: Z`, a naive-vs-modeled occupancy
 comparison per year.
 
+### Debugging and assessing data/outputs
+
+Three plotting functions, for when a fit looks wrong and you need to see
+*why* rather than just the summary numbers. Each returns the `sf` grid it
+plotted (with the plotted column added) invisibly, so you can inspect the
+underlying values or hand them to `mapview()` for an interactive version.
+
+```r
+library(msomgom)
+config <- load_config("configs/my_run.yaml")
+prep <- prep_survey_data(config)
+arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
+
+# Where was the study area actually surveyed? Blank cells you expected
+# coverage in usually mean a study-area-polygon or grid problem.
+plot_survey_coverage(arrays)
+plot_survey_coverage(arrays, season = 3)              # one season only
+
+# Where are the sightings landing, relative to coverage above?
+plot_sightings(arrays, "RIWH")
+plot_sightings(arrays, "RIWH", season = 3)
+
+# After fitting with jags_params = "Z": posterior occupancy probability
+# per cell, spatially - the payoff visualization for an occupancy model.
+fit <- fit_occupancy_model(arrays, config)             # config$jags$params: "Z"
+plot_occupancy_map(fit, arrays)
+plot_occupancy_map(fit, arrays, year = 2)
+```
+
+`plot_survey_coverage()`/`plot_sightings()` are built directly from the same
+arrays the model fits on (`arrays$reps` and `arrays$species_arrays`), so what
+you see is exactly what went into the model, not a rederivation from the raw
+CSV. `plot_occupancy_map()` reports the same posterior-mean-`Z` numbers as
+`compare_naive_vs_modeled_occupancy()`'s table, just spatially instead of
+per-year.
+
 ### Environmental covariates
 
 `whale.mod` (in `jags.R`) puts environmental covariates on detection
@@ -298,6 +334,7 @@ R/
   jagsPrep.R                       # build_detection_arrays(...) -> spatial grid + detection arrays
   jags.R                           # fit_occupancy_model(...) -> fits the JAGS model
   evaluate_model.R                 # evaluate_occupancy_model(...) -> convergence diagnostics
+  plot_diagnostics.R               # plot_survey_coverage/plot_sightings/plot_occupancy_map
   cleanup.R                        # cleanup_outputs(config) -> removes data file/figs
   main.R                           # run_occupancy_model(config_path) -> orchestrates all of the above
   msomgom-package.R                # package-level doc + centralized @import/@importFrom
@@ -308,8 +345,10 @@ inst/
   extdata/configs/                 # example configs: bof_riwh.yaml, mock_test.yaml
   scripts/
     run_pipeline.R                 # CLI wrapper: Rscript run_pipeline.R config.yaml
-    check_citations.R              # verifies README.md's References section is still current
-.github/workflows/check-citations.yml  # runs check_citations.R monthly, opens an issue on drift
+tools/
+  citations.csv                    # DOI/URL registry the shared citation engine checks
+  citation-hooks.R                 # repo-specific citation checks (e.g. NARWC handbook version)
+.github/workflows/check-citations.yaml  # calls chross22/distsamp's shared citation-check engine monthly
 legacy/                            # archived pre-refactor scripts (gitignored, kept locally)
 docs/refactor_plan.md              # full history of the generalization refactor
 ```
@@ -349,4 +388,4 @@ section usually needs all of these.
 - Wickham, H., François, R., Henry, L., Müller, K., & Vaughan, D. (2026a). *dplyr: A grammar of data manipulation* [R package]. <https://CRAN.R-project.org/package=dplyr>
 - Wickham, H., Hester, J., & Bryan, J. (2026b). *readr: Read rectangular text data* [R package]. <https://CRAN.R-project.org/package=readr>
 
-Citations above reflect package versions installed at the time this was written (see [Setup](#setup)); run `citation("pkgname")` in R for the exact citation matching your installed version. [`inst/scripts/check_citations.R`](inst/scripts/check_citations.R) checks this list against current CRAN metadata and that every cited URL still resolves; a [scheduled workflow](.github/workflows/check-citations.yml) runs it monthly and opens an issue if anything needs review.
+Citations above reflect package versions installed at the time this was written (see [Setup](#setup)); run `citation("pkgname")` in R for the exact citation matching your installed version. A [scheduled workflow](.github/workflows/check-citations.yaml) runs monthly against the shared citation-check engine in [chross22/distsamp](https://github.com/chross22/distsamp), checking [`tools/citations.csv`](tools/citations.csv)'s registry against current CRAN/DOI metadata and running repo-specific checks from [`tools/citation-hooks.R`](tools/citation-hooks.R) (e.g. whether a newer NARWC handbook has been published); it opens an issue if anything needs review.
