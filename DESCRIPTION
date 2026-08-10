@@ -30,7 +30,9 @@ Imports:
     yaml
 Suggests:
     coda,
+    datamatch,
     dclone,
+    derivoce,
     googledrive,
     knitr,
     mapview,
@@ -41,6 +43,9 @@ Suggests:
     tmap,
     webshot,
     withr
+Remotes:
+    chross22/datamatch,
+    chross22/derivoce
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 URL: https://github.com/chross22/msomgom

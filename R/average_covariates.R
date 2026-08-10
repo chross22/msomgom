@@ -9,10 +9,13 @@
 # variable plus YEAR/MONTH/DAY. No hard dependency on the datamatch package
 # itself - load_covariate_netcdf() below builds the same shape directly from a
 # folder of daily NetCDF files, for when you already have local files instead
-# of calling accessEnvDat() to fetch them.
+# of calling accessEnvDat() to fetch them. chross22/derivoce's derived-covariate
+# functions (gradients, distances, lags, integrals, ...) consume and return
+# that same shape too, so they slot in before average_covariates() with no
+# reshaping - see the README's "Environmental covariates" section.
 #
 # Typical use, tied to an occupancy-model config:
-#   source("load_config.R"); source("average_covariates.R")
+#   library(msomgom)
 #   config <- load_config("configs/bof_riwh.yaml")
 #   env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 #   windows <- season_windows_from_config(config)
@@ -184,8 +187,10 @@ parse_date_from_filename <- function(path) {
 #' combination.
 #'
 #' @param env_dat `sf` POINT object with `YEAR`/`MONTH`/`DAY` columns and one
-#'   column per covariate variable (as returned by `load_covariate_netcdf()`
-#'   or `datamatch::accessEnvDat()`)
+#'   column per covariate variable (as returned by `load_covariate_netcdf()`,
+#'   `datamatch::accessEnvDat()`, or any of `derivoce`'s derived-covariate
+#'   functions, e.g. `derivoce::horizontal_gradient()`, run on either of those
+#'   - they consume and return this same shape)
 #' @param area_grid_sf `sf` polygon grid with a `grid_id` column (e.g.
 #'   `arrays$area_grid_sf` from a prior `build_detection_arrays()` call, so
 #'   the grid matches exactly)
@@ -199,9 +204,13 @@ parse_date_from_filename <- function(path) {
 #'   `t` lines up with year `t` / absolute season index `t` elsewhere in this
 #'   pipeline)
 #' @seealso [season_windows_from_config()] and [regular_windows()] for
-#'   building `windows`; [load_covariate_netcdf()] for building `env_dat`;
-#'   [build_detection_arrays()] for `area_grid_sf`; [fit_occupancy_model()],
-#'   which takes this function's output as `occ_covariates`
+#'   building `windows`; [load_covariate_netcdf()] for building `env_dat`
+#'   from local files, or `datamatch::accessEnvDat()` for fetching it live from
+#'   Copernicus; `derivoce::horizontal_gradient()` and its siblings for
+#'   deriving further covariates (gradients, distances, lags, ...) before
+#'   averaging; [build_detection_arrays()] for `area_grid_sf`;
+#'   [fit_occupancy_model()], which takes this function's output as
+#'   `occ_covariates`
 #' @family covariates
 #' @examples
 #' \dontrun{
@@ -209,7 +218,16 @@ parse_date_from_filename <- function(path) {
 #' prep <- prep_survey_data(config)
 #' arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
 #'
+#' # from local files:
 #' env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
+#'
+#' # or live from Copernicus, optionally enriched with a derived covariate -
+#' # both return the same env_dat shape average_covariates() expects:
+#' bb <- list(xmin = -70, xmax = -66, ymin = 41, ymax = 44)
+#' env_dat <- datamatch::accessEnvDat(vars = "SST", years = 2018:2020, months = 1:12,
+#'                                     bounding_box = bb)
+#' env_dat <- derivoce::horizontal_gradient(env_dat, "SST") # adds SST_grad
+#'
 #' windows <- season_windows_from_config(config)
 #' sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 #' }

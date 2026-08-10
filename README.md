@@ -254,13 +254,32 @@ The two steps: prep the covariate data (`average_covariates.R`), then pass it
 into a run (`covariates.psi/phi/gamma` in the config + the `occ_covariates`
 argument).
 
-**1. Prep covariate data.** `average_covariates()` works directly with the
-output of [`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch)
-(Ross, n.d.) (an `sf` point object per day, tagged with YEAR/MONTH/DAY), which
-pulls from the E.U. Copernicus Marine Service (Copernicus Marine Service,
-n.d.); or with a folder of local daily NetCDF files via `load_covariate_netcdf()`
-if you already have files on disk instead (e.g. from another data source, or
-from `datamatch` run separately). Either way, it spatially averages onto this
+**1. Prep covariate data.** `average_covariates()` works with any `sf` point
+object tagged with YEAR/MONTH/DAY, one column per variable - that shape is
+shared across a small family of sibling packages, so nothing needs reshaping
+between them:
+
+- [`datamatch`](https://github.com/chross22/datamatch) (Ross, n.d.) fetches
+  that shape live from the E.U. Copernicus Marine Service (Copernicus Marine
+  Service, n.d.) via `datamatch::accessEnvDat()`
+- [`derivoce`](https://github.com/chross22/derivoce) computes derived
+  covariates (spatial/temporal gradients, distance to shore/front/isobath,
+  lags, integrals, eddy kinetic energy, ...) from that same shape, returning
+  it enriched with new columns - so it composes with either source below
+- `load_covariate_netcdf()` (in this package) builds the same shape directly
+  from a folder of local daily NetCDF files, for when you already have files
+  on disk instead of fetching live (e.g. from another source, or from
+  `datamatch` run separately and saved)
+
+Neither `datamatch` nor `derivoce` is a hard dependency - both are optional
+(`Suggests`), installed the same way as this package itself:
+
+```r
+devtools::install_github("chross22/datamatch")
+devtools::install_github("chross22/derivoce")
+```
+
+Whichever source you use, `average_covariates()` spatially averages onto this
 pipeline's hex grid and temporally averages over whatever windows you give it:
 
 ```r
@@ -277,7 +296,16 @@ windows <- season_windows_from_config(config)
 # or arbitrary fixed-interval windows, independent of any occupancy config
 # windows <- regular_windows("2018-01-01", "2020-12-31", by = "1 month")
 
+# from local files:
 env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
+
+# or live from Copernicus, optionally enriched with a derived covariate -
+# both return the same env_dat shape average_covariates() expects, so this
+# is a drop-in alternative to the load_covariate_netcdf() line above:
+# env_dat <- datamatch::accessEnvDat(vars = "SST", years = 2018:2020, months = 1:12,
+#                                     bounding_box = list(xmin = -70, xmax = -66, ymin = 41, ymax = 44))
+# env_dat <- derivoce::horizontal_gradient(env_dat, "SST")  # adds an SST_grad column
+
 sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 # sst_avg$sst is a [num_cells x num_ssn] matrix, same num_ssn indexing as
 # effort3d/jday3d/bft3d

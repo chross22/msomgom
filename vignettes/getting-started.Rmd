@@ -117,12 +117,36 @@ initial occupancy (`psi`), persistence (`phi`), and colonization (`gamma`)
 too - each process independently, with zero or more named covariates chosen
 per config. A process with none configured stays intercept-only.
 
-`average_covariates()` preps covariate data (from
-[`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch)'s
-output, which pulls from the Copernicus Marine Service, or from local daily
-NetCDF files via `load_covariate_netcdf()`) onto this pipeline's hex grid, at
+`average_covariates()` preps covariate data onto this pipeline's hex grid, at
 either the occupancy model's own season/year windows or arbitrary custom
-ones:
+ones. It accepts an `sf` point object tagged with YEAR/MONTH/DAY from any of
+a few sources that all share that same shape:
+[`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch), which
+pulls live from the Copernicus Marine Service; local daily NetCDF files via
+this package's own `load_covariate_netcdf()`; or either of those further
+enriched by [`derivoce`](https://github.com/chross22/derivoce)'s derived
+covariates (spatial/temporal gradients, distance to shore/front/isobath,
+lags, integrals, ...), which consume and return the same shape:
+
+```r
+# not run in this vignette, since it needs network access and Copernicus
+# credentials - see datamatch's README for setup. Either package is optional
+# (Suggests), installed the same way as this one:
+#   devtools::install_github("chross22/datamatch")
+#   devtools::install_github("chross22/derivoce")
+env_dat <- datamatch::accessEnvDat(
+  vars = "SST", years = 2018:2020, months = 1:12,
+  bounding_box = list(xmin = -70, xmax = -66, ymin = 41, ymax = 44)
+)
+env_dat <- derivoce::horizontal_gradient(env_dat, "SST") # adds an SST_grad column
+
+windows <- season_windows_from_config(config)
+sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
+```
+
+The rest of this section uses a synthetic covariate instead, so the vignette
+renders offline without those credentials - the mechanics past this point
+(config wiring, `occ_covariates`) are identical either way:
 
 ```{r covariates, eval = have_jags}
 config <- load_config(config_path)
@@ -130,7 +154,7 @@ prep <- prep_survey_data(config)
 arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
 
 # a synthetic covariate here, standing in for a real one from
-# load_covariate_netcdf() or datamatch::accessEnvDat()
+# load_covariate_netcdf(), datamatch::accessEnvDat(), or derivoce (see above)
 set.seed(1)
 windows <- season_windows_from_config(config)
 fake_sst <- matrix(
