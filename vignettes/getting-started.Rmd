@@ -95,6 +95,40 @@ cat("_(This chunk needs a working JAGS/rjags/dclone install to actually run;",
 section) has already been computed and printed above, since
 `run_occupancy_model()` calls `evaluate_occupancy_model()` by default.
 
+### Debugging a run that isn't working
+
+Before reaching for R's general-purpose debugger, `diagnose_pipeline()` runs
+the data-prep and grid-building stages on their own (never JAGS) and reports
+the most common reasons a run fails, hangs, or produces meaningless output -
+as a plain PASS/WARN/FAIL list:
+
+```r
+diagnose_pipeline(config_path)
+```
+
+If the problem is a genuine crash rather than something `diagnose_pipeline()`
+flags, R's own debugging tools work on any msomgom function the same way
+they'd work on your own code:
+
+```r
+# see the exact call stack right after an error
+traceback()
+
+# step through a function line by line ("n" for next line, "c" to finish)
+debugonce(prep_survey_data)
+prep_survey_data(load_config(config_path), verbose = TRUE)
+
+# drop into the debugger at *any* uncaught error, for the rest of the session
+options(error = recover)
+run_occupancy_model(config_path)
+options(error = NULL) # turn it back off when done
+```
+
+`prep_survey_data(..., verbose = TRUE)` is worth calling on its own too - it
+prints the record count after every filter step (platform, `FILEID` prefix,
+date range), which is usually the fastest way to see exactly where a filter
+is dropping more than expected.
+
 ## 4. Evaluate the fit
 
 `evaluate_occupancy_model()` reports a posterior parameter summary table,

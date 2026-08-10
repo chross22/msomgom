@@ -34,7 +34,10 @@ survey_column_aliases <- list(
   # carry alongside a different LEGTYPE.
   LEGTYPE = c("legtype", "leg", "legtype_bk"),
   LEGSTAGE = c("legstage", "stage"),
-  ALT = c("alt", "altitude", "altft", "altitudeft", "height"),
+  # NOT "height" - too generic, and real survey files commonly carry
+  # unrelated height fields (Swell_Height, Wave_Height, Cloud_Height) that
+  # would false-positive-match ALT via the substring fallback below.
+  ALT = c("alt", "altitude", "altft", "altitudeft", "aircraftalt", "trkaltitude"),
   HEADING = c("heading", "hdg", "course"),
   WX = c("wx", "weather"),
   CLOUD = c("cloud", "cloudcover", "clouds"),

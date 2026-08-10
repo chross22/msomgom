@@ -61,6 +61,15 @@ test_that("substring fallback still applies the ambiguity warning when several c
   expect_equal(sum(names(out) == "ALT"), 1)
 })
 
+test_that("ALT doesn't false-positive-match an unrelated *_Height_* column", {
+  # regression test: "height" used to be an ALT alias, which made
+  # "Swell_Height_m" match ALT ahead of the real altitude columns below
+  dat <- data.frame(Swell_Height_m = 2.1, TrkAltitude_m = 500, EVENTNO = 1, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_equal(out$ALT, 500)
+  expect_true("Swell_Height_m" %in% names(out)) # left alone, not consumed as ALT
+})
+
 test_that("YEAR/MONTH/DAY are derived from a combined date column when missing", {
   # TIME is also missing here, so it gets derived too (message says
   # "YEAR/MONTH/DAY/TIME") - only the derived values are asserted, since

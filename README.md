@@ -253,6 +253,40 @@ It prints a plain PASS/WARN/FAIL report and returns `list(config, prep,
 arrays)` invisibly (whichever were reached), so you can pick up investigating
 right where it stopped - e.g. `plot_survey_coverage(result$arrays)`.
 
+**When `diagnose_pipeline()` isn't enough** - a crash inside a pipeline stage
+itself, not just a suspicious-looking result - R's own debugging tools work
+on any msomgom function like they would on your own code:
+
+- **`traceback()`** - run immediately after an error, before anything else,
+  to print the exact call stack that led to it.
+- **`prep_survey_data(config, verbose = TRUE)`** - reports how many records
+  survive each filter step (platform, `FILEID` prefix, date range) as it
+  runs, so you can see exactly where a filter zeroes things out.
+- **`debugonce(prep_survey_data)`** (or any other exported function) - runs
+  that one call in R's interactive line-by-line debugger: `n` steps to the
+  next line, `c` runs to completion, and typing a variable's name at the
+  browser prompt shows its current value. Only fires once, so it doesn't
+  need to be turned back off.
+- **`options(error = recover)`** - turned on for the rest of the session,
+  this drops you into an interactive prompt at *every* uncaught error,
+  letting you pick any frame in the call stack and inspect it - useful when
+  you don't know in advance which function is going to fail. Turn it back
+  off with `options(error = NULL)`.
+
+```r
+# see the exact call stack right after a crash
+traceback()
+
+# step through prep_survey_data() line by line
+debugonce(prep_survey_data)
+prep_survey_data(config, verbose = TRUE)
+
+# drop into the debugger at any uncaught error, for the rest of the session
+options(error = recover)
+run_occupancy_model("configs/my_run.yaml")
+options(error = NULL) # turn it back off when done
+```
+
 Three plotting functions, for when a fit looks wrong and you need to see
 *why* rather than just the summary numbers. Each returns the `sf` grid it
 plotted (with the plotted column added) invisibly, so you can inspect the
