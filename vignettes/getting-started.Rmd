@@ -13,6 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 have_jags <- requireNamespace("rjags", quietly = TRUE) && requireNamespace("dclone", quietly = TRUE)
+have_fancyfx <- requireNamespace("fancyfx", quietly = TRUE)
 ```
 
 msomgom fits a dynamic (multi-season, colonization/persistence) occupancy
@@ -183,6 +184,33 @@ code is generated per run (`build_whale_model_code()`) rather than being one
 static model - a config with no covariates produces exactly the original
 intercept-only model, and each process's covariate block is included only
 when that process actually has covariates configured.
+
+### Plotting the covariate's effect
+
+`result_cov$fit` is tagged `msomgom_fit`, which carries what
+[`fancyfx`](https://github.com/chross22/fancyfx) needs to plot `sst`'s fitted
+effect - the same way it plots an `mgcv::gam`'s partial effects or any other
+model's predictions, via its `effect_estimates()` generic. `fancyfx` is
+optional (not installed with msomgom); this section is skipped if it isn't
+available.
+
+```{r effects, eval = have_jags && have_fancyfx}
+library(fancyfx)
+
+effect_estimates(result_cov$fit, "sst")
+```
+
+```{r effects-noeval, eval = !(have_jags && have_fancyfx), echo = FALSE, results = "asis"}
+cat("*(Skipped: needs both a JAGS install and the fancyfx package - not run",
+    "when building this vignette without them.)*")
+```
+
+The full plot stacks a rug of the raw covariate data above the effect curve:
+
+```{r effects-plot, eval = have_jags && have_fancyfx, fig.width = 6, fig.height = 4}
+rug_dat <- data.frame(sst = as.vector(fake_sst))
+plotEffects(result_cov$fit, rug_dat, "sst", xlab = "SST")
+```
 
 ## Cleanup
 
