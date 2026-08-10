@@ -1,5 +1,23 @@
 # msomgom (development version)
 
+* The survey CSV is now read with every column as text instead of letting
+  `readr` guess. Guessing corrupted values this pipeline depends on: a `FILEID`
+  column whose values are all `"F"` guesses as logical and arrived as
+  `"FALSE"`, and one mixing `"T"`/`"F"` codes became `TRUE`/`FALSE`. Every
+  column the pipeline uses was already being coerced to its expected type after
+  the column-name standardization step, so nothing else changes - except that a
+  zero-padded `PLATFORM` (`"099"`, as NARWC writes it) is now converted before
+  being compared against a config that says `99`.
+* New `survey.split_surveys_by` (`"none"` by default, or `"date"` /
+  `"date_platform"`): derives a per-survey `FILEID` for an export that doesn't
+  use `FILEID` as a survey identifier - one where every record carries the same
+  value, say. Without it such a file is a single survey covering everything,
+  which errors in `build_detection_arrays()` for spanning multiple days, and
+  would otherwise leave one replicate column per season - no repeat visits for
+  the occupancy model to estimate detection from. The derived ID keeps the
+  original `FILEID` as a prefix, and is built after the `FILEID`-prefix filter
+  runs, so prefixes still mean what they do in the source file.
+
 * `build_detection_arrays()` now explains the multi-day-`FILEID` error instead
   of printing `">1 jday. STOP!"` and calling a bare `stop()` (which surfaces as
   an error with no message at all). It names the offending `FILEID`, its

@@ -31,6 +31,16 @@
 #'   accepted for a deliberately combined analysis.
 #' @param fileid_prefixes `FILEID` first-letter codes to keep (e.g. `c("P", "p")`
 #'   for POP shipboard surveys). Required, as `platform_code`.
+#' @param split_surveys_by how to identify one survey (one replicate visit) in
+#'   the data. `"none"` (the default) takes `FILEID` as given, which is right
+#'   for NARWC data, where one `FILEID` is one single-day survey. Use
+#'   `"date"` or `"date_platform"` for an export that doesn't use `FILEID` as
+#'   a survey identifier - e.g. one where every record carries the same
+#'   `FILEID` - to derive one survey per calendar day (US/Eastern), or per
+#'   calendar day per `PLATFORM` when several vessels/aircraft survey on the
+#'   same day. This sets the model's replicate unit: `effort`, julian day, and
+#'   sea state are all summarized per survey, so a unit that merges two real
+#'   outings averages them together.
 #' @param on_effort_legtypes `LEGTYPE` codes that count as on-effort (combined
 #'   with `LEGSTAGE` begin/continue/end-watch, which - per NARWC 8.A.20 - is
 #'   recorded independently of `LEGTYPE` and shared across POP ship and aerial
@@ -120,6 +130,7 @@ generate_config <- function(
   platform_code = 99,
   fileid_prefixes = c("P", "p"),
   on_effort_legtypes = c(5, 6),
+  split_surveys_by = "none",
 
   beg_year = 1988,
   end_year = 2020,
@@ -211,7 +222,8 @@ generate_config <- function(
     survey = list(
       platform_code = if (length(platform_code) == 0) NULL else as.integer(platform_code),
       fileid_prefixes = as.list(fileid_prefixes),
-      on_effort_legtypes = as.list(as.integer(on_effort_legtypes))
+      on_effort_legtypes = as.list(as.integer(on_effort_legtypes)),
+      split_surveys_by = match.arg(split_surveys_by, c("none", "date", "date_platform"))
     ),
     dates = list(
       beg_year = as.integer(beg_year),

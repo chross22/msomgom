@@ -37,6 +37,16 @@ single-day survey = one replicate column), and the detection model has no
 platform covariate, so gridding several platforms together produces a fit
 that doesn't mean what it looks like. \code{platform_code} accepts more than one
 code for a genuinely combined analysis, but that's a deliberate choice.
+
+\code{FILEID} is taken as the survey identifier - one \code{FILEID} is one survey, one
+replicate visit. For an export that doesn't use it that way (one where every
+record carries the same \code{FILEID}, say), set \code{survey.split_surveys_by} to
+\code{"date"} or \code{"date_platform"} and the identifier is derived per calendar day
+(US/Eastern), or per day per \code{PLATFORM}, keeping the original \code{FILEID} as a
+prefix. Without it, such a file is a single survey covering everything:
+\code{build_detection_arrays()} errors on its multi-day span, and even if it
+didn't, one replicate column per season leaves the occupancy model nothing
+to estimate detection from.
 }
 \examples{
 \dontrun{

@@ -17,6 +17,7 @@ generate_config(
   platform_code = 99,
   fileid_prefixes = c("P", "p"),
   on_effort_legtypes = c(5, 6),
+  split_surveys_by = "none",
   beg_year = 1988,
   end_year = 2020,
   beg_month = 8,
@@ -93,6 +94,17 @@ This pipeline assumes POP-format survey data; NARWC's separate
 line-transect \code{LEGTYPE} scheme (codes \code{0}-\code{4}) isn't supported, since
 \code{LEGSTAGE} means something different there (recorded only during
 census legs, \code{LEGTYPE == 2}, rather than independently).}
+
+\item{split_surveys_by}{how to identify one survey (one replicate visit) in
+the data. \code{"none"} (the default) takes \code{FILEID} as given, which is right
+for NARWC data, where one \code{FILEID} is one single-day survey. Use
+\code{"date"} or \code{"date_platform"} for an export that doesn't use \code{FILEID} as
+a survey identifier - e.g. one where every record carries the same
+\code{FILEID} - to derive one survey per calendar day (US/Eastern), or per
+calendar day per \code{PLATFORM} when several vessels/aircraft survey on the
+same day. This sets the model's replicate unit: \code{effort}, julian day, and
+sea state are all summarized per survey, so a unit that merges two real
+outings averages them together.}
 
 \item{beg_year}{first year to include (inclusive)}
 

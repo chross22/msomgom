@@ -15,6 +15,16 @@
 #' that doesn't mean what it looks like. `platform_code` accepts more than one
 #' code for a genuinely combined analysis, but that's a deliberate choice.
 #'
+#' `FILEID` is taken as the survey identifier - one `FILEID` is one survey, one
+#' replicate visit. For an export that doesn't use it that way (one where every
+#' record carries the same `FILEID`, say), set `survey.split_surveys_by` to
+#' `"date"` or `"date_platform"` and the identifier is derived per calendar day
+#' (US/Eastern), or per day per `PLATFORM`, keeping the original `FILEID` as a
+#' prefix. Without it, such a file is a single survey covering everything:
+#' `build_detection_arrays()` errors on its multi-day span, and even if it
+#' didn't, one replicate column per season leaves the occupancy model nothing
+#' to estimate detection from.
+#'
 #' @param config a config list, as returned by `load_config()`
 #' @param verbose logical; if `TRUE`, reports how many records survive each
 #'   filtering step (platform, `FILEID` prefix, date range), and which of those
@@ -78,12 +88,16 @@ prep_survey_data <- function(config, verbose = FALSE) {
     }
   }
 
-  ## 1. import data. Read with guessed types first (rather than a fixed
-  ## col_types spec keyed on exact NARWC names), since a real export's column
-  ## names commonly differ - standardize_survey_columns() renames what it can
-  ## recognize before the columns this pipeline actually needs are required
-  ## and coerced to their expected types below.
-  dat <- read_csv(file = data_file, show_col_types = FALSE)
+  ## 1. import data. Every column is read as text rather than with a fixed
+  ## col_types spec keyed on exact NARWC names (a real export's column names
+  ## commonly differ, and standardize_survey_columns() can't rename what it
+  ## hasn't read yet) - and rather than letting readr guess, because guessing
+  ## corrupts values this pipeline depends on. A FILEID column whose values
+  ## are all "F" guesses as logical and arrives as "FALSE"; one mixing "T" and
+  ## "F" survey codes becomes TRUE/FALSE. Text is lossless, and every column
+  ## this pipeline actually uses is coerced to its expected type below anyway.
+  dat <- read_csv(file = data_file, show_col_types = FALSE,
+                  col_types = readr::cols(.default = readr::col_character()))
   dat <- standardize_survey_columns(dat)
 
   numeric_cols <- c("EVENTNO", "MONTH", "DAY", "YEAR", "TIME", "LATITUDE", "LONGITUDE",
@@ -126,6 +140,11 @@ prep_survey_data <- function(config, verbose = FALSE) {
          paste(names(dat), collapse = ", "),
          ". See ?standardize_survey_columns for the aliases it recognizes.")
   }
+  # PLATFORM isn't in numeric_cols above (it's dropped before the modeling
+  # columns are assembled), but it's read as text like everything else, and
+  # NARWC writes the code zero-padded - so "099" has to become 99 before it can
+  # be compared against a config that says 99.
+  dat$PLATFORM <- suppressWarnings(as.numeric(dat$PLATFORM))
   dat <- dat |>
     filter(PLATFORM %in% platform_code)
   say(nrow(dat), " remain after filtering to PLATFORM in ",
@@ -170,6 +189,35 @@ prep_survey_data <- function(config, verbose = FALSE) {
   dat <- dat |>
     filter(MONTH_ET == config$dates$beg_month | MONTH_ET == config$dates$end_month)
   say(nrow(dat), " remain after filtering to months ", config$dates$beg_month, "/", config$dates$end_month)
+
+  # Optionally rewrite FILEID into a per-survey identifier, for data that
+  # doesn't use FILEID as a survey identifier at all - an export where every
+  # record shares one FILEID is one survey as far as everything downstream is
+  # concerned, which means a file spanning many days (an error in
+  # build_detection_arrays()) and, worse, a single replicate column per season,
+  # leaving the occupancy model no repeat visits to separate detection from
+  # occupancy. This is a modeling choice, not cleanup - whatever it splits on
+  # becomes the replicate unit, and jday/effort/BEAUFORT get summarized per
+  # unit - so it's off unless the config asks for it, and the derived ID keeps
+  # the original FILEID as its prefix (the FILEID-prefix filter above has
+  # already run against the original value, so prefixes still mean what they
+  # did in the source file).
+  split_surveys_by <- config$survey$split_surveys_by
+  if (is.null(split_surveys_by)) split_surveys_by <- "none"
+  if (!(split_surveys_by %in% c("none", "date", "date_platform"))) {
+    stop("survey.split_surveys_by must be \"none\", \"date\", or \"date_platform\", got: \"",
+         split_surveys_by, "\"")
+  }
+  if (split_surveys_by != "none" && nrow(dat) > 0) {
+    n_before <- length(unique(dat$FILEID))
+    dat$FILEID <- if (split_surveys_by == "date_platform") {
+      paste(dat$FILEID, format(dat$date_ymd, "%Y%m%d"), dat$PLATFORM, sep = "_")
+    } else {
+      paste(dat$FILEID, format(dat$date_ymd, "%Y%m%d"), sep = "_")
+    }
+    say(n_before, " source FILEID(s) split into ", length(unique(dat$FILEID)),
+        " survey(s) by ", split_surveys_by)
+  }
 
   if (nrow(dat) == 0) {
     warning("No records remain after the platform/FILEID/date filters. Check ",

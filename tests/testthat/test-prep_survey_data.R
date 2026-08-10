@@ -201,3 +201,50 @@ test_that("prep_survey_data reports a clear error when Microsoft365R isn't insta
 
   expect_error(prep_survey_data(config), "Microsoft365R")
 })
+
+test_that("split_surveys_by derives per-survey FILEIDs when the source file uses one for everything", {
+  # every record carries the same FILEID ("F"), across two days and two
+  # platforms - one survey covering everything, as far as gridding is concerned
+  dat <- rbind(
+    make_hand_built_record(EVENTNO = 1, FILEID = "F", DAY = 10, PLATFORM = 99),
+    make_hand_built_record(EVENTNO = 2, FILEID = "F", DAY = 10, PLATFORM = 107),
+    make_hand_built_record(EVENTNO = 3, FILEID = "F", DAY = 11, PLATFORM = 99)
+  )
+
+  config <- make_hand_built_config(dat, "split_none_test", platform_code = c(99, 107),
+                                   fileid_prefixes = "F")
+  expect_equal(unique(prep_survey_data(config)$dat$FILEID), "F")
+
+  config <- make_hand_built_config(dat, "split_date_test", platform_code = c(99, 107),
+                                   fileid_prefixes = "F", split_surveys_by = "date")
+  expect_setequal(prep_survey_data(config)$dat$FILEID, c("F_20180810", "F_20180810", "F_20180811"))
+
+  config <- make_hand_built_config(dat, "split_date_platform_test", platform_code = c(99, 107),
+                                   fileid_prefixes = "F", split_surveys_by = "date_platform")
+  expect_setequal(prep_survey_data(config)$dat$FILEID,
+                  c("F_20180810_99", "F_20180810_107", "F_20180811_99"))
+})
+
+test_that("an unrecognized split_surveys_by errors rather than silently doing nothing", {
+  config <- make_hand_built_config(make_hand_built_record(), "bad_split_test")
+  config$survey$split_surveys_by <- "week"
+
+  expect_error(prep_survey_data(config), "split_surveys_by must be")
+})
+
+test_that("a FILEID column that looks logical to readr is kept as text", {
+  # every value is "F", which readr guesses as a logical column - it would
+  # arrive as "FALSE", silently renaming every survey in the file
+  dat <- rbind(make_hand_built_record(EVENTNO = 1, FILEID = "F"),
+               make_hand_built_record(EVENTNO = 2, FILEID = "F"))
+  config <- make_hand_built_config(dat, "logical_fileid_test", fileid_prefixes = "F")
+
+  expect_equal(unique(prep_survey_data(config)$dat$FILEID), "F")
+})
+
+test_that("a zero-padded PLATFORM code matches an unpadded config code", {
+  dat <- make_hand_built_record(PLATFORM = "099")
+  config <- make_hand_built_config(dat, "padded_platform_test")
+
+  expect_equal(nrow(prep_survey_data(config)$dat), 1)
+})
