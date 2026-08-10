@@ -4,7 +4,7 @@
 \name{msomgom-package}
 \alias{msomgom}
 \alias{msomgom-package}
-\title{msomgom: Multi-Species Occupancy Model of the Gulf of Maine}
+\title{msomgom: Multi-Season Occupancy Model of the Gulf of Maine}
 \description{
 See the package README for a full walkthrough, or
 \code{vignette("getting-started", package = "msomgom")}.
