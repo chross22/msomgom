@@ -262,3 +262,26 @@ test_that("PLATFORM matches by value: named platforms and zero-padded codes both
                                    platform_code = c("Vessel", "Aerial"))
   expect_equal(nrow(prep_survey_data(config)$dat), 2)
 })
+
+test_that("a TIME written as a clock is read, not silently emptied", {
+  expect_equal(parse_survey_time(c("12:34:56", "12:34")), c(123456, 123400))
+  expect_equal(parse_survey_time("2024-04-01T12:34:56Z"), 123456)
+  expect_equal(parse_survey_time(c("120000", NA, "")), c(120000, NA, NA))
+  expect_equal(parse_survey_time(c(120000, 130000)), c(120000, 130000)) # already numeric
+})
+
+test_that("prep_survey_data dates a record whose TIME carries a clock", {
+  dat <- make_hand_built_record(TIME = "12:34:56")
+  config <- make_hand_built_config(dat, "clock_time_test")
+
+  prep <- prep_survey_data(config)
+  expect_equal(prep$dat$TIME, 123456)
+  expect_false(is.na(prep$dat$datetime_GMT))
+})
+
+test_that("a numeric column emptied by the read warns instead of arriving as NA", {
+  dat <- make_hand_built_record(BEAUFORT = "two") # not a form as.numeric() reads
+  config <- make_hand_built_config(dat, "emptied_column_test")
+
+  expect_warning(prep_survey_data(config), "entirely NA after being read as numbers")
+})

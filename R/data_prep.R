@@ -111,9 +111,25 @@ prep_survey_data <- function(config, verbose = FALSE) {
          paste(names(dat), collapse = ", "), ". See ?standardize_survey_columns for ",
          "the aliases it recognizes, or rename the column(s) in the source file.")
   }
+  # TIME first, and not with as.numeric(): see parse_survey_time()
+  dat$TIME <- parse_survey_time(dat$TIME)
+
+  values_before <- vapply(dat[numeric_cols], n_values, integer(1))
   dat <- dat |>
     mutate(across(all_of(numeric_cols), as.numeric)) |>
     mutate(across(all_of(character_cols), as.character))
+  # from narwcr: a column that had values going in and is entirely NA coming
+  # out was emptied by the coercion, not by the data. Every downstream symptom
+  # of that (no records after filtering, no on-effort rows, NA datetimes) points
+  # somewhere else, so it has to be said here.
+  emptied <- numeric_cols[values_before > 0 &
+                            vapply(dat[numeric_cols], n_values, integer(1)) == 0]
+  if (length(emptied) > 0) {
+    warning("Column(s) ", paste(emptied, collapse = ", "), " had values in the file but ",
+            "are entirely NA after being read as numbers - the values aren't in a form ",
+            "as.numeric() reads. Check how they're written in the source file.",
+            call. = FALSE)
+  }
 
   say(nrow(dat), " records read from ", data_file)
 
@@ -325,4 +341,52 @@ prep_survey_data <- function(config, verbose = FALSE) {
     tmpdat = tmpdat,
     season_info = list(season = season, num_ssn = num_ssn)
   )
+}
+
+#' How many real values a column carries
+#'
+#' Blanks count as missing: a CSV's empty cell arrives as either `NA` or `""`
+#' depending on how it was read.
+#'
+#' @param x a vector
+#' @return integer count of values that are neither `NA` nor blank
+#' @keywords internal
+n_values <- function(x) sum(!is.na(x) & trimws(as.character(x)) != "")
+
+#' Read a survey TIME column, whatever clock format it's written in
+#'
+#' `TIME` is `hhmmss` in 24-hour form (NARWC handbook 8.A.37), and that's what
+#' this pipeline stores. Real files also write `"12:34:56"`, `"12:34"`, and
+#' whole timestamps like `"2024-04-01T12:34:56Z"` - and `as.numeric()` turns
+#' every one of those into `NA` without a word, so a file with a perfectly good
+#' clock arrives with no times at all. Preferring `TrkTime_UTC` (see
+#' [standardize_survey_columns()]) makes that more likely, since a GPS track
+#' log is exactly where a clock-formatted time comes from, but it was always
+#' possible for `Time_UTC`.
+#'
+#' The first clock-looking piece of the string is taken, so a bare time and a
+#' full timestamp both work (an ISO date separates with `-`, so it can't be
+#' mistaken for one). Seconds are optional and default to zero. A column that's
+#' already numeric is returned untouched.
+#'
+#' @param x the raw `TIME` column
+#' @return numeric `hhmmss`
+#' @keywords internal
+parse_survey_time <- function(x) {
+  if (is.numeric(x)) return(x)
+
+  s <- trimws(as.character(x))
+  s[!nzchar(s)] <- NA_character_
+  out <- suppressWarnings(as.numeric(s))
+
+  clock <- is.na(out) & !is.na(s) & grepl("[0-9]{1,2}:[0-9]{2}", s)
+  if (any(clock)) {
+    hit <- regmatches(s[clock], regexpr("[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?", s[clock]))
+    parts <- strsplit(hit, ":", fixed = TRUE)
+    out[clock] <- vapply(parts, function(p) {
+      p <- suppressWarnings(as.numeric(p))
+      p[1] * 10000 + p[2] * 100 + if (length(p) > 2 && !is.na(p[3])) p[3] else 0
+    }, numeric(1))
+  }
+  out
 }

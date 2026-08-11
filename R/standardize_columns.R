@@ -96,6 +96,11 @@ survey_preferred_source <- list(
   LATITUDE = c("trklatitude", "trklat"),
   LONGITUDE = c("trklongitude", "trklon", "trklong"),
   ALT = c("trkaltitude_m", "trkaltitude", "trkaltitude_ft"),
+  # from narwcr: not a GPS quirk but the same shape - where a file carries
+  # both, LEGTYPE_BK (Kenney's leg type) is the one to believe, and the plain
+  # LEGTYPE is kept rather than dropped. This is why the argument is
+  # `prefer_source` and not `prefer_track`.
+  LEGTYPE = "legtype_bk",
   # Only the UTC track clock displaces a plain TIME. TrkTime_Local would move
   # the whole dataset onto another zone to gain the same seconds, which isn't a
   # trade to make without being asked.
@@ -160,7 +165,7 @@ survey_unit_factors <- list(
 #' the platform and the track log are not the same place, and taking the plain
 #' column would silently survey the wrong track. The displaced column is kept
 #' as `<CANONICAL>_ORIGINAL` rather than dropped, the swap warns, and
-#' `prefer_track = FALSE` turns it off. `TrkTime_Local` deliberately displaces
+#' `prefer_source = FALSE` turns it off. `TrkTime_Local` deliberately displaces
 #' nothing: it would move the whole dataset onto another zone to gain the
 #' receiver's seconds.
 #'
@@ -176,7 +181,7 @@ survey_unit_factors <- list(
 #'   default `229` is a typical NARWC aerial survey altitude of 750 ft. Only
 #'   used as a last resort, and only matters for aerial-survey analyses that
 #'   actually use `ALT`, which this pipeline's own filtering does not.
-#' @param prefer_track whether a `Trk*` GPS track column displaces a
+#' @param prefer_source whether a `Trk*` GPS track column displaces a
 #'   `LATITUDE`/`LONGITUDE`/`ALT`/`TIME` column already present under its own
 #'   name (default `TRUE`; see above). `FALSE` keeps the column that's already
 #'   there, and the track log is left under its own name.
@@ -196,11 +201,8 @@ survey_unit_factors <- list(
 #' out <- standardize_survey_columns(dat2)
 #' out$YEAR # 2024
 #' @export
-standardize_survey_columns <- function(dat, alt_default = 229, prefer_track = TRUE) {
+standardize_survey_columns <- function(dat, alt_default = 229, prefer_source = TRUE) {
   norm <- function(x) gsub("[^a-z0-9]", "", tolower(x))
-  # how many real values a column carries - blanks count as missing, since a
-  # CSV's empty cell can arrive as either NA or "" depending on how it was read
-  n_values <- function(x) sum(!is.na(x) & trimws(as.character(x)) != "")
 
   current_names <- names(dat)
   current_norm <- norm(current_names)
@@ -233,7 +235,7 @@ standardize_survey_columns <- function(dat, alt_default = 229, prefer_track = TR
     # own name (see survey_preferred_source) - but only if it has data of its
     # own, since displacing a real column with an empty one is exactly the
     # failure the value-ranking below exists to prevent.
-    preferred_norm <- if (prefer_track) norm(survey_preferred_source[[canonical]]) else character(0)
+    preferred_norm <- if (prefer_source) norm(survey_preferred_source[[canonical]]) else character(0)
     has_preferred <- length(preferred_norm) > 0 &&
       any(vapply(which(current_norm %in% preferred_norm & !claimed),
                  function(i) n_values(dat[[i]]) > 0, logical(1)))
@@ -311,11 +313,11 @@ standardize_survey_columns <- function(dat, alt_default = 229, prefer_track = TR
         # the column named `canonical` has data, so only a preferred source
         # displaces it - and only if the preferred source is what won above
         if (!(current_norm[hits[1]] %in% preferred_norm)) next
-        warning("'", current_names[hits[1]], "' is the platform's own GPS track log, ",
-                "so it replaces the '", canonical, "' column recorded alongside it ",
-                "(those are not the same position on a file covering more than one ",
-                "platform). The displaced column was kept as '", canonical,
-                "_ORIGINAL'. Pass prefer_track = FALSE to keep '", canonical,
+        warning("'", current_names[hits[1]], "' takes precedence over the '", canonical,
+                "' column recorded alongside it - they are two different records of ",
+                "the same thing, not two spellings of one (see survey_preferred_source). ",
+                "The displaced column was kept as '", canonical,
+                "_ORIGINAL'. Pass prefer_source = FALSE to keep '", canonical,
                 "' as it was.", call. = FALSE)
         names(dat)[canon_idx[1]] <- paste0(canonical, "_ORIGINAL")
       } else {

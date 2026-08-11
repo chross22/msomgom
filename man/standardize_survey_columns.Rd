@@ -4,7 +4,7 @@
 \alias{standardize_survey_columns}
 \title{Standardize survey CSV column names to what this pipeline expects}
 \usage{
-standardize_survey_columns(dat, alt_default = 229, prefer_track = TRUE)
+standardize_survey_columns(dat, alt_default = 229, prefer_source = TRUE)
 }
 \arguments{
 \item{dat}{a data.frame/tibble, as read from the raw survey CSV}
@@ -15,7 +15,7 @@ default \code{229} is a typical NARWC aerial survey altitude of 750 ft. Only
 used as a last resort, and only matters for aerial-survey analyses that
 actually use \code{ALT}, which this pipeline's own filtering does not.}
 
-\item{prefer_track}{whether a \verb{Trk*} GPS track column displaces a
+\item{prefer_source}{whether a \verb{Trk*} GPS track column displaces a
 \code{LATITUDE}/\code{LONGITUDE}/\code{ALT}/\code{TIME} column already present under its own
 name (default \code{TRUE}; see above). \code{FALSE} keeps the column that's already
 there, and the track log is left under its own name.}
@@ -75,7 +75,7 @@ on a file covering both a vessel and an aircraft, the position recorded for
 the platform and the track log are not the same place, and taking the plain
 column would silently survey the wrong track. The displaced column is kept
 as \verb{<CANONICAL>_ORIGINAL} rather than dropped, the swap warns, and
-\code{prefer_track = FALSE} turns it off. \code{TrkTime_Local} deliberately displaces
+\code{prefer_source = FALSE} turns it off. \code{TrkTime_Local} deliberately displaces
 nothing: it would move the whole dataset onto another zone to gain the
 receiver's seconds.
 

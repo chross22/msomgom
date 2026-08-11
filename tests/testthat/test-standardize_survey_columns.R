@@ -244,16 +244,16 @@ test_that("an ambiguous match prefers the candidate with data, and says how many
 test_that("a GPS track column displaces the plain column recorded alongside it", {
   dat <- data.frame(LATITUDE = c(44.6, 44.7), TrkLatitude = c(44.61, 44.71),
                     ALT = 229, check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "GPS track log")
+  expect_warning(out <- standardize_survey_columns(dat), "takes precedence over")
 
   expect_equal(out$LATITUDE, c(44.61, 44.71))
   expect_equal(out$LATITUDE_ORIGINAL, c(44.6, 44.7)) # kept, not dropped
 })
 
-test_that("prefer_track = FALSE keeps the column that's already there", {
+test_that("prefer_source = FALSE keeps the column that's already there", {
   dat <- data.frame(LATITUDE = c(44.6, 44.7), TrkLatitude = c(44.61, 44.71),
                     ALT = 229, check.names = FALSE)
-  out <- standardize_survey_columns(dat, prefer_track = FALSE)
+  out <- standardize_survey_columns(dat, prefer_source = FALSE)
 
   expect_equal(out$LATITUDE, c(44.6, 44.7))
   expect_true("TrkLatitude" %in% names(out))
@@ -269,7 +269,7 @@ test_that("an empty GPS track column does not displace a populated plain column"
 test_that("TrkTime_UTC displaces a plain TIME, but TrkTime_Local does not", {
   dat <- data.frame(TIME = c(120000, 130000), TrkTime_UTC = c(120005, 130005),
                     ALT = 229, check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "GPS track log")
+  expect_warning(out <- standardize_survey_columns(dat), "takes precedence over")
   expect_equal(out$TIME, c(120005, 130005))
 
   # a local track clock would move the dataset onto another zone for the same
@@ -349,4 +349,13 @@ test_that("a DATE column is parsed, not left as written", {
   dat <- data.frame(EVENTNO = 1:2, DATE = c("8/15/2024", "8/16/2024"), ALT = 229)
   out <- standardize_survey_columns(dat)
   expect_equal(out$DATE, as.Date(c("2024-08-15", "2024-08-16")))
+})
+
+test_that("LEGTYPE_BK displaces a plain LEGTYPE recorded alongside it", {
+  dat <- data.frame(LEGTYPE = c(5, 5), LEGTYPE_BK = c(6, 6),
+                    ALT = 229, check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "takes precedence over")
+
+  expect_equal(out$LEGTYPE, c(6, 6))
+  expect_equal(out$LEGTYPE_ORIGINAL, c(5, 5))
 })

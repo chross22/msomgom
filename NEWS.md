@@ -1,5 +1,21 @@
 # msomgom (development version)
 
+* `TIME` is parsed rather than coerced with `as.numeric()`. The handbook's form
+  is `hhmmss` (8.A.37) and that's still what's stored, but real files write
+  `"12:34:56"`, `"12:34"`, and whole timestamps like `"2024-04-01T12:34:56Z"` -
+  and `as.numeric()` turns every one of those into `NA` without a word, so a
+  file with a perfectly good clock arrived with no times at all. Preferring
+  `TrkTime_UTC` makes that more likely, since a GPS track log is exactly where
+  a clock-formatted time comes from.
+* The general form of that failure now warns: a numeric column that had values
+  in the file and is entirely `NA` after being read as numbers was emptied by
+  the coercion, not by the data, and `prep_survey_data()` says so instead of
+  handing back a column of `NA`.
+* `LEGTYPE_BK` joins the preferred-source rule - where a file carries both, it
+  is the leg type to believe, and the plain `LEGTYPE` is kept as
+  `LEGTYPE_ORIGINAL`. `standardize_survey_columns()`'s `prefer_track` argument
+  is renamed `prefer_source` accordingly, since `LEGTYPE_BK` has nothing to do
+  with a GPS track.
 * Synced with the rules narwcr (chross22/narwcr) added on 2026-08-11, since the
   two packages read the same archive and keep the same vocabulary by hand:
   * The `Trk*` GPS track family is recognised (`TrkLatitude`, `TrkLongitude`,
