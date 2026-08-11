@@ -4,16 +4,21 @@
 \alias{standardize_survey_columns}
 \title{Standardize survey CSV column names to what this pipeline expects}
 \usage{
-standardize_survey_columns(dat, alt_default = 750)
+standardize_survey_columns(dat, alt_default = 229, prefer_track = TRUE)
 }
 \arguments{
 \item{dat}{a data.frame/tibble, as read from the raw survey CSV}
 
 \item{alt_default}{numeric altitude to fill in for every record when the
-\code{ALT} column can't be found at all (default \code{750}, a typical NARWC
-aerial survey altitude in feet - only used as a last resort, and only
-matters for aerial-survey analyses that actually use \code{ALT}, which this
-pipeline's own filtering does not)}
+\code{ALT} column can't be found at all, \strong{in metres} (handbook 8.A.1) - the
+default \code{229} is a typical NARWC aerial survey altitude of 750 ft. Only
+used as a last resort, and only matters for aerial-survey analyses that
+actually use \code{ALT}, which this pipeline's own filtering does not.}
+
+\item{prefer_track}{whether a \verb{Trk*} GPS track column displaces a
+\code{LATITUDE}/\code{LONGITUDE}/\code{ALT}/\code{TIME} column already present under its own
+name (default \code{TRUE}; see above). \code{FALSE} keeps the column that's already
+there, and the track log is left under its own name.}
 }
 \value{
 \code{dat} with columns renamed to their canonical NARWC names where a
@@ -56,7 +61,23 @@ warning naming how many.
 fallback beyond all of the above: if still missing afterward, every
 record is given a constant default (see \code{alt_default}) with a warning,
 rather than erroring, since \code{ALT} isn't otherwise used by this pipeline's
-filtering/gridding logic.
+filtering/gridding logic. \code{ALT} is metres (NARWC handbook 8.A.1), so a
+column whose name declares feet (\code{Alt_ft}, \code{TrkAltitude_ft}) is multiplied
+by 0.3048 on the way in, with a warning saying so.
+
+Two rules decide between columns that claim the same canonical name. A
+column that carries data beats one that doesn't; among those that do, a
+documented priority applies - \code{TrkTime_UTC} over a plain UTC spelling, UTC
+over local, \code{TrkAltitude_m} over \code{TrkAltitude_ft}. Separately, a \verb{Trk*}
+column (the platform's own GPS track log) displaces a \code{LATITUDE},
+\code{LONGITUDE}, \code{ALT}, or \code{TIME} column already present under its own name:
+on a file covering both a vessel and an aircraft, the position recorded for
+the platform and the track log are not the same place, and taking the plain
+column would silently survey the wrong track. The displaced column is kept
+as \verb{<CANONICAL>_ORIGINAL} rather than dropped, the swap warns, and
+\code{prefer_track = FALSE} turns it off. \code{TrkTime_Local} deliberately displaces
+nothing: it would move the whole dataset onto another zone to gain the
+receiver's seconds.
 
 Every other expected column (see \code{\link[=prep_survey_data]{prep_survey_data()}}) is required - if
 one still can't be matched after all of this, \code{prep_survey_data()} errors

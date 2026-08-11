@@ -1,5 +1,33 @@
 # msomgom (development version)
 
+* Synced with the rules narwcr (chross22/narwcr) added on 2026-08-11, since the
+  two packages read the same archive and keep the same vocabulary by hand:
+  * The `Trk*` GPS track family is recognised (`TrkLatitude`, `TrkLongitude`,
+    `TrkAltitude_m`/`_ft`, `TrkTime_UTC`/`_Local`) and, where one exists, it
+    displaces a `LATITUDE`/`LONGITUDE`/`ALT`/`TIME` column already present
+    under its own name: those are the platform's own track log versus the
+    position recorded for the platform, which on a file covering both a vessel
+    and an aircraft is not the same place. The displaced column is kept as
+    `<CANONICAL>_ORIGINAL`, the swap warns, and `prefer_track = FALSE` turns it
+    off. `TrkTime_Local` displaces nothing - it would move the dataset onto
+    another zone to gain the receiver's seconds.
+  * `ALT` is metres (handbook 8.A.1). A column whose name declares feet
+    (`Alt_ft`, `TrkAltitude_ft`) is multiplied by 0.3048 with a warning, and a
+    file carrying both `TrkAltitude_m` and `TrkAltitude_ft` takes the metres
+    one. **`alt_default` is now 229 (750 ft in metres), not 750** - that
+    default only applies to files with no altitude column at all, and this
+    pipeline's own filtering doesn't use `ALT`.
+  * Documented priority now breaks ties between columns that both have data:
+    `TrkTime_UTC` over a plain UTC spelling, UTC over local, `TrkAltitude_m`
+    over `TrkAltitude_ft`. Having data still comes first.
+  * A supplied date column is kept as `DATE` (parsed, never left as raw text)
+    instead of only being mined for `YEAR`/`MONTH`/`DAY`, and
+    `prep_survey_data()` dates a record from `DATE` when it's there. Rebuilding
+    the date from the parts pairs a date on the recording programme's clock
+    with a `TIME` that may now come from the GPS track log in UTC, which puts
+    every record within the offset of midnight on the wrong day - silently,
+    since the result is still a valid date.
+
 * `standardize_survey_columns()` now prefers the candidate column that actually
   has data. When more than one column matches a canonical name, they're ranked
   by how many values they carry (ties keep file order) instead of taking

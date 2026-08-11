@@ -175,7 +175,17 @@ prep_survey_data <- function(config, verbose = FALSE) {
   # real US/Eastern datetime.
   # this matters because a survey event's local calendar date/month can differ from what's
   # in the raw YEAR/MONTH columns for events recorded near a UTC day boundary.
-  dat$date_ymd_gmt <- as.Date(with(dat, paste(YEAR, MONTH, DAY, sep = "-")), "%Y-%m-%d")
+  # A supplied date column wins over rebuilding the date from YEAR/MONTH/DAY.
+  # The parts are on whatever clock the programme recorded them on, while TIME
+  # may have come from the GPS track log in UTC (see
+  # standardize_survey_columns()); pairing the two puts the date and the time
+  # on different clocks, and every record within the offset of midnight gets
+  # the wrong date - silently, since the result is still a valid date.
+  if ("DATE" %in% names(dat)) {
+    dat$date_ymd_gmt <- as.Date(dat$DATE)
+  } else {
+    dat$date_ymd_gmt <- as.Date(with(dat, paste(YEAR, MONTH, DAY, sep = "-")), "%Y-%m-%d")
+  }
   GMT_strings <- padstr0(dat$TIME, 6) # pad the times so they have 6 digits
   # correct instances where "200000" was stored as "02e+05"
   GMT_strings[which(GMT_strings == "02e+05")] <- "200000"

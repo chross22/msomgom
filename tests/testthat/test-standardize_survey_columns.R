@@ -30,7 +30,7 @@ test_that("an ambiguous match warns and uses the first candidate, not silently p
 test_that("ALT missing entirely warns and is filled with the default", {
   dat <- data.frame(EVENTNO = 1:3)
   expect_warning(out <- standardize_survey_columns(dat), "ALT column not found")
-  expect_equal(out$ALT, rep(750, 3))
+  expect_equal(out$ALT, rep(229, 3)) # metres: 750 ft, the handbook's unit for ALT (8.A.1)
 })
 
 test_that("alt_default overrides the fallback value", {
@@ -137,7 +137,7 @@ test_that("prep_survey_data reads a CSV with non-canonical column names via alia
 
   expect_warning(prep <- prep_survey_data(config), "ALT column not found")
   expect_equal(nrow(prep$dat), 1)
-  expect_equal(prep$dat$ALT, 750)
+  expect_equal(prep$dat$ALT, 229) # metres (8.A.1), the default for a file with no ALT
   expect_equal(prep$dat$LATITUDE, 44.6)
 })
 
@@ -239,4 +239,114 @@ test_that("an ambiguous match prefers the candidate with data, and says how many
   dat <- data.frame(Event = c(NA, NA), EventNum = c(10, 20), ALT = 750)
   expect_warning(out <- standardize_survey_columns(dat), "EventNum \\(2 value\\(s\\)\\)")
   expect_equal(out$EVENTNO, c(10, 20))
+})
+
+test_that("a GPS track column displaces the plain column recorded alongside it", {
+  dat <- data.frame(LATITUDE = c(44.6, 44.7), TrkLatitude = c(44.61, 44.71),
+                    ALT = 229, check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "GPS track log")
+
+  expect_equal(out$LATITUDE, c(44.61, 44.71))
+  expect_equal(out$LATITUDE_ORIGINAL, c(44.6, 44.7)) # kept, not dropped
+})
+
+test_that("prefer_track = FALSE keeps the column that's already there", {
+  dat <- data.frame(LATITUDE = c(44.6, 44.7), TrkLatitude = c(44.61, 44.71),
+                    ALT = 229, check.names = FALSE)
+  out <- standardize_survey_columns(dat, prefer_track = FALSE)
+
+  expect_equal(out$LATITUDE, c(44.6, 44.7))
+  expect_true("TrkLatitude" %in% names(out))
+})
+
+test_that("an empty GPS track column does not displace a populated plain column", {
+  dat <- data.frame(LATITUDE = c(44.6, 44.7), TrkLatitude = c(NA, NA),
+                    ALT = 229, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_equal(out$LATITUDE, c(44.6, 44.7))
+})
+
+test_that("TrkTime_UTC displaces a plain TIME, but TrkTime_Local does not", {
+  dat <- data.frame(TIME = c(120000, 130000), TrkTime_UTC = c(120005, 130005),
+                    ALT = 229, check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "GPS track log")
+  expect_equal(out$TIME, c(120005, 130005))
+
+  # a local track clock would move the dataset onto another zone for the same
+  # seconds, so the UTC column already present stays
+  dat <- data.frame(TIME = c(120000, 130000), TrkTime_Local = c(80005, 90005),
+                    ALT = 229, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+  expect_equal(out$TIME, c(120000, 130000))
+})
+
+test_that("an altitude named in feet is converted to metres", {
+  dat <- data.frame(EVENTNO = 1:2, TrkAltitude_ft = c(750, 800), check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "multiplied by 0.3048")
+  expect_equal(out$ALT, c(750, 800) * 0.3048)
+})
+
+test_that("a file carrying both metres and feet altitudes takes the metres one", {
+  dat <- data.frame(EVENTNO = 1:2, TrkAltitude_ft = c(750, 800),
+                    TrkAltitude_m = c(228.6, 243.8), check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "Multiple columns look like")
+  expect_equal(out$ALT, c(228.6, 243.8)) # no conversion applied
+})
+
+test_that("an empty metres altitude yields to a populated feet one, converted", {
+  dat <- data.frame(EVENTNO = 1:2, TrkAltitude_m = c(NA, NA),
+                    TrkAltitude_ft = c(750, 800), check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "multiplied by 0.3048")
+  expect_equal(out$ALT, c(750, 800) * 0.3048)
+})
+
+test_that("a supplied date column is kept as DATE, not just mined for parts", {
+  # YEAR/MONTH/DAY are present and on a different clock than the date column:
+  # keeping DATE is what stops prep_survey_data() pairing a local date with a
+  # UTC time and landing the record on the wrong day
+  dat <- data.frame(EVENTNO = 1, YEAR = 2024, MONTH = 8, DAY = 14,
+                    Date_UTC = "2024-08-15", ALT = 229, check.names = FALSE)
+  out <- standardize_survey_columns(dat)
+
+  expect_equal(out$DATE, as.Date("2024-08-15"))
+  expect_equal(out$YEAR, 2024) # the parts are left exactly as they were
+  expect_equal(out$DAY, 14)
+})
+
+test_that("prep_survey_data dates a record from DATE rather than the date parts", {
+  configs_dir <- withr::local_tempdir()
+  project_dir <- withr::local_tempdir()
+  data_dir <- file.path(project_dir, "data")
+  dir.create(data_dir, recursive = TRUE)
+
+  # the parts say Aug 10; the supplied UTC date says Aug 11 - a record just
+  # past midnight UTC, recorded on the previous local day
+  dat <- data.frame(
+    FILEID = "P1001a", EVENTNO = 1, PLATFORM = 99,
+    MONTH = 8, DAY = 10, YEAR = 2018, TIME = 3000,
+    Date_UTC = "2018-08-11",
+    LATITUDE = 44.6, LONGITUDE = -66.4,
+    LEGTYPE = 5, LEGSTAGE = 1, ALT = 229,
+    HEADING = 0, WX = "C", CLOUD = 1,
+    VISIBLTY = 3, BEAUFORT = 2,
+    SPECCODE = NA, IDREL = NA, NUMBER = NA, CONFIDNC = NA,
+    check.names = FALSE
+  )
+  write.csv(dat, file.path(data_dir, "survey.csv"), row.names = FALSE, na = "")
+
+  path <- generate_config(
+    "supplied_date_test", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/survey.csv",
+    beg_year = 2018, end_year = 2018, beg_month = 8, end_month = 9
+  )
+  prep <- prep_survey_data(load_config(path))
+  expect_equal(prep$dat$date_ymd_gmt, as.Date("2018-08-11"))
+})
+
+test_that("a DATE column is parsed, not left as written", {
+  # as.Date() reads "8/15/2024" as the year 8 rather than rejecting it, so a
+  # DATE column left as raw text fails downstream instead of here
+  dat <- data.frame(EVENTNO = 1:2, DATE = c("8/15/2024", "8/16/2024"), ALT = 229)
+  out <- standardize_survey_columns(dat)
+  expect_equal(out$DATE, as.Date(c("2024-08-15", "2024-08-16")))
 })
