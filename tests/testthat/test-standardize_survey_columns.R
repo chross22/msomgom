@@ -92,7 +92,7 @@ test_that("TIME is also derived from a combined datetime column when missing", {
 test_that("existing YEAR/MONTH/DAY/TIME columns are left alone, not overwritten by a date column", {
   dat <- data.frame(EVENTNO = 1, YEAR = 1999, MONTH = 6, DAY = 20, TIME = 90000,
                      Date = "2024-08-15", ALT = 750)
-  expect_no_message(out <- standardize_survey_columns(dat))
+  out <- standardize_survey_columns(dat)
   expect_equal(out$YEAR, 1999)
   expect_equal(out$TIME, 90000)
 })
@@ -235,16 +235,27 @@ test_that("a LATITUDE column isn't claimed by PLATFORM, whose name contains 'lat
   expect_false("PLATFORM" %in% names(out))
 })
 
-test_that("an ambiguous match prefers the candidate with data, and says how many each has", {
-  dat <- data.frame(Event = c(NA, NA), EventNum = c(10, 20), ALT = 750)
-  expect_warning(out <- standardize_survey_columns(dat), "EventNum \\(2 value\\(s\\)\\)")
+test_that("a canonical column narwcr resolved onto an empty source is rescued", {
+  # narwcr resolves EVENTNO by its own rules, which don't consider whether the
+  # column it picks has anything in it. When it lands on the empty one, this
+  # package's second pass finds the populated leftover and swaps it in.
+  dat <- data.frame(EventNum = c(NA, NA), Event = c(10, 20), ALT = 750)
+  out <- suppressMessages(standardize_survey_columns(dat))
   expect_equal(out$EVENTNO, c(10, 20))
+})
+
+test_that("the candidate with data wins among columns narwcr left unrecognised", {
+  # neither name is in narwcr's vocabulary; both reach ALT only by substring
+  dat <- data.frame(Boat_Alt = c(NA, NA), Plane_Alt = c(300, 310),
+                    EVENTNO = 1:2, check.names = FALSE)
+  expect_warning(out <- standardize_survey_columns(dat), "Plane_Alt \\(2 value\\(s\\)\\)")
+  expect_equal(out$ALT, c(300, 310))
 })
 
 test_that("a GPS track column displaces the plain column recorded alongside it", {
   dat <- data.frame(LATITUDE = c(44.6, 44.7), TrkLatitude = c(44.61, 44.71),
                     ALT = 229, check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "takes precedence over")
+  expect_warning(out <- standardize_survey_columns(dat), "is being used as")
 
   expect_equal(out$LATITUDE, c(44.61, 44.71))
   expect_equal(out$LATITUDE_ORIGINAL, c(44.6, 44.7)) # kept, not dropped
@@ -269,7 +280,7 @@ test_that("an empty GPS track column does not displace a populated plain column"
 test_that("TrkTime_UTC displaces a plain TIME, but TrkTime_Local does not", {
   dat <- data.frame(TIME = c(120000, 130000), TrkTime_UTC = c(120005, 130005),
                     ALT = 229, check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "takes precedence over")
+  expect_warning(out <- standardize_survey_columns(dat), "is being used as")
   expect_equal(out$TIME, c(120005, 130005))
 
   # a local track clock would move the dataset onto another zone for the same
@@ -280,23 +291,24 @@ test_that("TrkTime_UTC displaces a plain TIME, but TrkTime_Local does not", {
   expect_equal(out$TIME, c(120000, 130000))
 })
 
-test_that("an altitude named in feet is converted to metres", {
+test_that("an altitude named in feet is converted to metres, and says so", {
+  # narwcr owns this rule and reports it; the conversion must never be silent
   dat <- data.frame(EVENTNO = 1:2, TrkAltitude_ft = c(750, 800), check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "multiplied by 0.3048")
+  expect_message(out <- standardize_survey_columns(dat), "multiplied by 0.3048")
   expect_equal(out$ALT, c(750, 800) * 0.3048)
 })
 
 test_that("a file carrying both metres and feet altitudes takes the metres one", {
   dat <- data.frame(EVENTNO = 1:2, TrkAltitude_ft = c(750, 800),
                     TrkAltitude_m = c(228.6, 243.8), check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "Multiple columns look like")
-  expect_equal(out$ALT, c(228.6, 243.8)) # no conversion applied
+  out <- suppressMessages(standardize_survey_columns(dat))
+  expect_equal(out$ALT, c(228.6, 243.8)) # metres taken as-is, no conversion
 })
 
 test_that("an empty metres altitude yields to a populated feet one, converted", {
   dat <- data.frame(EVENTNO = 1:2, TrkAltitude_m = c(NA, NA),
                     TrkAltitude_ft = c(750, 800), check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "multiplied by 0.3048")
+  expect_message(out <- standardize_survey_columns(dat), "multiplied by 0.3048")
   expect_equal(out$ALT, c(750, 800) * 0.3048)
 })
 
@@ -354,7 +366,7 @@ test_that("a DATE column is parsed, not left as written", {
 test_that("LEGTYPE_BK displaces a plain LEGTYPE recorded alongside it", {
   dat <- data.frame(LEGTYPE = c(5, 5), LEGTYPE_BK = c(6, 6),
                     ALT = 229, check.names = FALSE)
-  expect_warning(out <- standardize_survey_columns(dat), "takes precedence over")
+  expect_warning(out <- standardize_survey_columns(dat), "is being used as")
 
   expect_equal(out$LEGTYPE, c(6, 6))
   expect_equal(out$LEGTYPE_ORIGINAL, c(5, 5))

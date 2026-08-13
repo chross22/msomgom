@@ -15,10 +15,10 @@ default \code{229} is a typical NARWC aerial survey altitude of 750 ft. Only
 used as a last resort, and only matters for aerial-survey analyses that
 actually use \code{ALT}, which this pipeline's own filtering does not.}
 
-\item{prefer_source}{whether a \verb{Trk*} GPS track column displaces a
-\code{LATITUDE}/\code{LONGITUDE}/\code{ALT}/\code{TIME} column already present under its own
-name (default \code{TRUE}; see above). \code{FALSE} keeps the column that's already
-there, and the track log is left under its own name.}
+\item{prefer_source}{passed to \code{\link[narwcr:standardize_narwc_columns]{narwcr::standardize_narwc_columns()}}:
+whether a preferred source (a \verb{Trk*} GPS track column, or \code{LEGTYPE_BK})
+displaces the column already present under the canonical name (default
+\code{TRUE}). \code{FALSE} keeps the column that's already there.}
 }
 \value{
 \code{dat} with columns renamed to their canonical NARWC names where a
@@ -28,26 +28,34 @@ column where applicable, and \code{ALT} added if it was missing entirely
 \description{
 Real survey exports rarely use the exact NARWC column names
 (\code{prep_survey_data()}'s import step expects \code{EVENTNO}, \code{LATITUDE}, etc.
-literally) - a column might be \code{Event}, \code{event_no}, or \verb{Event No.}
-instead. This renames columns to their canonical NARWC name in three
-passes, most specific first:
-\enumerate{
-\item An exact case-insensitive match against the canonical name itself.
-\item A match against a curated list of common aliases per column
-(\code{survey_column_aliases}), e.g. \code{"seastate"} for \code{BEAUFORT}.
-\item A generic fallback: any column whose name contains the canonical
-name (or a known alias) as a substring, or is contained by one - e.g.
-\code{"Survey_Alt_ft"} for \code{ALT}, \code{"Event_ID"} for \code{EVENTNO}. This is what
-catches a variant nobody thought to enumerate in the alias list, at
-the cost of a higher chance of matching an unrelated column that
-happens to share the substring - every match found this way still
-goes through the same ambiguity warning as the other two passes,
-rather than being applied silently.
-}
-All three passes ignore case, spaces, underscores, and punctuation, so
-\code{"Event No."}, \code{"event_no"}, and \code{"EventNo"} are equivalent.
+literally) - a column might be \code{Event}, \code{event_no}, or \verb{Event No.} instead.
 }
 \details{
+\code{\link[narwcr:standardize_narwc_columns]{narwcr::standardize_narwc_columns()}} does the resolving: the shared NARWC
+vocabulary, the \verb{Trk*} GPS-track preferred sources, the alias priorities and
+the feet-to-metres conversions all live there, and every rename and
+conversion it makes is reported. This function adds what narwcr
+deliberately doesn't do:
+\enumerate{
+\item A generic fallback for anything narwcr left unrecognised: a column
+whose name contains a canonical name or known alias as a substring, or
+is a prefix of one - \code{"Survey_Alt_ft"} for \code{ALT}, \code{"Event_ID"} for
+\code{EVENTNO}. narwcr refuses to guess; this pipeline is willing to guess
+and warn, because a column it can't match is a hard stop. The cost is a
+higher chance of matching an unrelated column that happens to share the
+substring, so every match here goes through the ambiguity warning below
+rather than being applied silently.
+\item Preferring the column that has data. Where several candidates
+qualify, the one carrying the most values wins (ties keep file order),
+and a canonical column that came through empty is displaced by a
+populated one found under another name - kept as \verb{<CANONICAL>_empty},
+with a warning. narwcr won't overwrite a canonical column, so without
+this an empty placeholder silently beats the real data beside it.
+\item \code{PLATFORM} aliases, which narwcr's vocabulary doesn't carry.
+}
+Matching ignores case, spaces, underscores, and punctuation throughout, so
+\code{"Event No."}, \code{"event_no"}, and \code{"EventNo"} are equivalent.
+
 If \code{YEAR}/\code{MONTH}/\code{DAY}/\code{TIME} are still missing after that (individually,
 any subset), they're derived from a single combined date(time) column if
 one can be found (matched the same three-pass way, e.g. \code{"Date"},
@@ -63,21 +71,13 @@ record is given a constant default (see \code{alt_default}) with a warning,
 rather than erroring, since \code{ALT} isn't otherwise used by this pipeline's
 filtering/gridding logic. \code{ALT} is metres (NARWC handbook 8.A.1), so a
 column whose name declares feet (\code{Alt_ft}, \code{TrkAltitude_ft}) is multiplied
-by 0.3048 on the way in, with a warning saying so.
+by 0.3048 on the way in (narwcr's conversion, reported as it happens).
 
-Two rules decide between columns that claim the same canonical name. A
-column that carries data beats one that doesn't; among those that do, a
-documented priority applies - \code{TrkTime_UTC} over a plain UTC spelling, UTC
-over local, \code{TrkAltitude_m} over \code{TrkAltitude_ft}. Separately, a \verb{Trk*}
-column (the platform's own GPS track log) displaces a \code{LATITUDE},
-\code{LONGITUDE}, \code{ALT}, or \code{TIME} column already present under its own name:
-on a file covering both a vessel and an aircraft, the position recorded for
-the platform and the track log are not the same place, and taking the plain
-column would silently survey the wrong track. The displaced column is kept
-as \verb{<CANONICAL>_ORIGINAL} rather than dropped, the swap warns, and
-\code{prefer_source = FALSE} turns it off. \code{TrkTime_Local} deliberately displaces
-nothing: it would move the whole dataset onto another zone to gain the
-receiver's seconds.
+See \code{\link[narwcr:standardize_narwc_columns]{narwcr::standardize_narwc_columns()}} for the rules this defers to,
+notably the \verb{Trk*} preferred sources: a GPS track column displaces a
+\code{LATITUDE}/\code{LONGITUDE}/\code{ALT}/\code{TIME}/\code{LEGTYPE} column already present under
+its own name, keeping the displaced one as \verb{<CANONICAL>_ORIGINAL}.
+\code{prefer_source} is passed straight through.
 
 Every other expected column (see \code{\link[=prep_survey_data]{prep_survey_data()}}) is required - if
 one still can't be matched after all of this, \code{prep_survey_data()} errors

@@ -1,5 +1,17 @@
 # msomgom (development version)
 
+* msomgom now depends on **narwcr** (chross22/narwcr) instead of keeping its
+  own copy of the NARWC vocabulary. `standardize_survey_columns()` runs
+  `narwcr::standardize_narwc_columns()` first, so the alias table, the `Trk*`
+  GPS-track preferred sources, the alias priorities and the feet-to-metres
+  conversions are all narwcr's, and its rename and conversion reports are
+  shown. What stays here is what narwcr deliberately doesn't do: the substring
+  fallback for a column nobody enumerated, preferring the candidate that has
+  data (including rescuing a canonical column that came through empty),
+  `PLATFORM` aliases, the `ALT` default, and deriving `YEAR`/`MONTH`/`DAY`/
+  `TIME` from a date column. Behaviour is otherwise unchanged; the warning text
+  for a preferred-source swap is now narwcr's wording.
+
 * `TIME` is parsed rather than coerced with `as.numeric()`. The handbook's form
   is `hhmmss` (8.A.37) and that's still what's stored, but real files write
   `"12:34:56"`, `"12:34"`, and whole timestamps like `"2024-04-01T12:34:56Z"` -
