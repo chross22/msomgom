@@ -1,0 +1,29 @@
+# Shared style configuration, kept identical across datamatch, derivoce,
+# taupatch, msomgom, dsfit, fancyfx and distsamp so a habit learned in one
+# repository is the right habit in the next.
+#
+# Two defaults are deliberately changed.
+#
+# `line_length_linter(100)` is a gate, not the target. The target is 80, which
+# this code mostly holds - about 1,500 lines run past it across the seven
+# repositories, but only a hundred run past 100. Setting the gate at 80 would
+# flag a wall nobody reads; setting it at 100 catches the lines that genuinely
+# ran away while leaving the near-misses alone.
+#
+# `object_name_linter` is off because the naming split is deliberate rather than
+# accidental. fancyfx exports plotEffects(), plotROC() and combinePlots(), and
+# datamatch exports accessCopernicus() and matchData(); the rest of both
+# packages is snake_case. Renaming public API for consistency would break every
+# downstream call for a cosmetic gain, so the linter is told not to ask.
+#
+# `semicolon_linter(allow_compound = TRUE)` because pairing two short, related
+# assignments on one line is used deliberately here and reads better than four
+# lines would - `du_dx <- du[[2]]; du_dy <- du[[3]]` in derivoce,
+# `lat1 <- rep_len(lat1, n); lon1 <- rep_len(lon1, n)` in distsamp. A *trailing*
+# semicolon is still flagged, since that one is only ever a leftover.
+linters: linters_with_defaults(
+    line_length_linter(100),
+    semicolon_linter(allow_compound = TRUE),
+    object_name_linter = NULL
+  )
+exclusions: list("R/RcppExports.R")

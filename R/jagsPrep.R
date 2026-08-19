@@ -85,7 +85,7 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
   # To sf and add grid ID
   area_grid_sf <- st_sf(area_grid)
   area_grid_sf <- area_grid_sf |>
-    mutate(grid_id = 1:length(lengths(area_grid)))
+    mutate(grid_id = seq_along(lengths(area_grid)))
   num_cells <- dim(area_grid_sf)[1]
   print(num_cells)
   rm(area_grid)
