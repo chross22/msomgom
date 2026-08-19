@@ -121,9 +121,9 @@ separately, and only if you use them:
 - `Microsoft365R` - only if you set `paths.onedrive_filename` (see
   [Fetching survey data](#fetching-survey-data-google-drive--onedrive) below)
 - `datamatch`, `derivoce` - fetching/deriving environmental covariates (see
-  [Environmental covariates](#environmental-covariates))
+  [Diagnostics and covariates](vignettes/diagnostics.Rmd))
 - `fancyfx` - plotting a fitted covariate's effect (see
-  [Covariate effect plots](#covariate-effect-plots-via-fancyfx))
+  [Diagnostics and covariates](vignettes/diagnostics.Rmd))
 - `knitr`, `rmarkdown` - building the vignette
 
 ```r
@@ -216,250 +216,36 @@ exercise of the filtering logic, not just a happy-path stub. See
 `vignette("getting-started", package = "msomgom")` for this same walkthrough,
 fully worked through and rendered.
 
-### Evaluate a saved run
+### Going further
 
-`evaluate_occupancy_model()` also works standalone against a previously saved
-result, without re-fitting:
+Once a run is more than a smoke test, two things come up: working out why a fit
+looks wrong, and putting environmental covariates on it.
 
-```r
-library(msomgom)
-config <- load_config("configs/my_run.yaml")
-evaluate_occupancy_model("output/RIWH.colext.RData", config = config)
-```
-
-It reports a posterior parameter summary table, Gelman-Rubin Rhat and effective
-sample size per parameter (with warnings for likely non-convergence or a noisy
-posterior), trace/density plots saved to `<output_dir>/mcmc_diagnostics.pdf`, and,
-when the model was run with `jags.params: Z`, a naive-vs-modeled occupancy
-comparison per year.
-
-### Debugging and assessing data/outputs
-
-**Before fitting**, `diagnose_pipeline()` runs the data-prep and grid-building
-stages (never JAGS itself) and reports the most common reasons a run fails,
-hangs, or "succeeds" with meaningless output - a filter that leaves nothing,
-a study-area polygon that misses the survey tracks, a species with zero
-detections, a record that fell outside every configured season, or a
-covariate matrix with the wrong shape:
+`diagnose_pipeline()` runs the data-prep and grid-building stages — never JAGS
+itself — and reports the most common reasons a run fails, hangs, or "succeeds"
+with meaningless output: a filter that leaves nothing, a study-area polygon that
+misses the survey tracks, a species with zero detections, a record outside every
+configured season, a covariate matrix with the wrong shape:
 
 ```r
-library(msomgom)
 diagnose_pipeline("configs/my_run.yaml")
-# with covariates, checked against config$covariates$psi/phi/gamma too:
-diagnose_pipeline("configs/my_run.yaml", occ_covariates = list(sst = sst_avg$sst))
 ```
 
-It prints a plain PASS/WARN/FAIL report and returns `list(config, prep,
-arrays)` invisibly (whichever were reached), so you can pick up investigating
-right where it stopped - e.g. `plot_survey_coverage(result$arrays)`.
+It prints a PASS/WARN/FAIL report and returns whatever it reached invisibly, so
+you can pick up investigating where it stopped. `plot_survey_coverage()`,
+`plot_sightings()`, `plot_occupancy_map()` and `plot_covariate_map()` then show
+what actually went into the model rather than a rederivation from the raw CSV.
 
-**When `diagnose_pipeline()` isn't enough** - a crash inside a pipeline stage
-itself, not just a suspicious-looking result - R's own debugging tools work
-on any msomgom function like they would on your own code:
+Covariates go on detection probability always, and optionally on initial
+occupancy (`psi`), persistence (`phi`) and colonization (`gamma`) — each process
+independently, chosen per config. A process with none configured stays
+intercept-only, and a config with no `covariates:` section behaves exactly as it
+did before the feature existed.
 
-- **`traceback()`** - run immediately after an error, before anything else,
-  to print the exact call stack that led to it.
-- **`prep_survey_data(config, verbose = TRUE)`** - reports how many records
-  survive each filter step (platform, `FILEID` prefix, date range) as it
-  runs, so you can see exactly where a filter zeroes things out.
-- **`debugonce(prep_survey_data)`** (or any other exported function) - runs
-  that one call in R's interactive line-by-line debugger: `n` steps to the
-  next line, `c` runs to completion, and typing a variable's name at the
-  browser prompt shows its current value. Only fires once, so it doesn't
-  need to be turned back off.
-- **`options(error = recover)`** - turned on for the rest of the session,
-  this drops you into an interactive prompt at *every* uncaught error,
-  letting you pick any frame in the call stack and inspect it - useful when
-  you don't know in advance which function is going to fail. Turn it back
-  off with `options(error = NULL)`.
-
-```r
-# see the exact call stack right after a crash
-traceback()
-
-# step through prep_survey_data() line by line
-debugonce(prep_survey_data)
-prep_survey_data(config, verbose = TRUE)
-
-# drop into the debugger at any uncaught error, for the rest of the session
-options(error = recover)
-run_occupancy_model("configs/my_run.yaml")
-options(error = NULL) # turn it back off when done
-```
-
-Three plotting functions, for when a fit looks wrong and you need to see
-*why* rather than just the summary numbers. Each returns the `sf` grid it
-plotted (with the plotted column added) invisibly, so you can inspect the
-underlying values or hand them to `mapview()` for an interactive version.
-
-```r
-library(msomgom)
-config <- load_config("configs/my_run.yaml")
-prep <- prep_survey_data(config)
-arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
-
-# Where was the study area actually surveyed? Blank cells you expected
-# coverage in usually mean a study-area-polygon or grid problem.
-plot_survey_coverage(arrays)
-plot_survey_coverage(arrays, season = 3)              # one season only
-
-# Where are the sightings landing, relative to coverage above?
-plot_sightings(arrays, "RIWH")
-plot_sightings(arrays, "RIWH", season = 3)
-
-# After fitting with jags_params = "Z": posterior occupancy probability
-# per cell, spatially - the payoff visualization for an occupancy model.
-fit <- fit_occupancy_model(arrays, config)             # config$jags$params: "Z"
-plot_occupancy_map(fit, arrays)
-plot_occupancy_map(fit, arrays, year = 2)
-
-# A covariate that's NA everywhere, constant, or spatially implausible is
-# much faster to catch here than after a fit quietly does nothing with it.
-sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
-plot_covariate_map(sst_avg$sst, arrays, var_name = "sst")
-```
-
-`plot_survey_coverage()`/`plot_sightings()` are built directly from the same
-arrays the model fits on (`arrays$reps` and `arrays$species_arrays`), so what
-you see is exactly what went into the model, not a rederivation from the raw
-CSV. `plot_occupancy_map()` reports the same posterior-mean-`Z` numbers as
-`compare_naive_vs_modeled_occupancy()`'s table, just spatially instead of
-per-year. `plot_covariate_map()` takes any one covariate matrix from
-`average_covariates()` (see [Environmental covariates](#environmental-covariates)
-below) and shows one window of it at a time (`window`, by position or by
-`windows$label`; defaults to the last one).
-
-### Environmental covariates
-
-`whale.mod` (in `jags.R`) puts environmental covariates on detection
-probability (day-of-year, sea state, effort), and optionally on initial
-occupancy (`psi`), persistence (`phi`), and colonization (`gamma`) too - each
-process independently gets zero or more named covariates, chosen per config.
-A process with none configured stays intercept-only, exactly as if this
-didn't exist; a config with no `covariates:` section at all behaves
-identically to before this feature was added.
-
-The two steps: prep the covariate data (`average_covariates.R`), then pass it
-into a run (`covariates.psi/phi/gamma` in the config + the `occ_covariates`
-argument).
-
-**1. Prep covariate data.** `average_covariates()` works with any `sf` point
-object tagged with YEAR/MONTH/DAY, one column per variable - that shape is
-shared across a small family of sibling packages, so nothing needs reshaping
-between them:
-
-- [`datamatch`](https://github.com/chross22/datamatch) (Ross, n.d.) fetches
-  that shape live from the E.U. Copernicus Marine Service (Copernicus Marine
-  Service, n.d.) via `datamatch::accessEnvDat()`
-- [`derivoce`](https://github.com/chross22/derivoce) computes derived
-  covariates (spatial/temporal gradients, distance to shore/front/isobath,
-  lags, integrals, eddy kinetic energy, ...) from that same shape, returning
-  it enriched with new columns - so it composes with either source below
-- `load_covariate_netcdf()` (in this package) builds the same shape directly
-  from a folder of local daily NetCDF files, for when you already have files
-  on disk instead of fetching live (e.g. from another source, or from
-  `datamatch` run separately and saved)
-
-Neither `datamatch` nor `derivoce` is a hard dependency - both are optional
-(`Suggests`), installed the same way as this package itself:
-
-```r
-devtools::install_github("chross22/datamatch")
-devtools::install_github("chross22/derivoce")
-```
-
-Whichever source you use, `average_covariates()` spatially averages onto this
-pipeline's hex grid and temporally averages over whatever windows you give it:
-
-```r
-library(msomgom)
-config <- load_config("configs/my_run.yaml")
-
-# area_grid_sf must come from build_detection_arrays(), so the covariate grid
-# matches the occupancy model's grid exactly, cell-for-cell
-prep <- prep_survey_data(config)
-arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
-
-# tied to the occupancy model's own season/year structure
-windows <- season_windows_from_config(config)
-# or arbitrary fixed-interval windows, independent of any occupancy config
-# windows <- regular_windows("2018-01-01", "2020-12-31", by = "1 month")
-
-# from local files:
-env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
-
-# or live from Copernicus, optionally enriched with a derived covariate -
-# both return the same env_dat shape average_covariates() expects, so this
-# is a drop-in alternative to the load_covariate_netcdf() line above:
-# env_dat <- datamatch::accessEnvDat(vars = "SST", years = 2018:2020, months = 1:12,
-#                                     bounding_box = list(xmin = -70, xmax = -66, ymin = 41, ymax = 44))
-# env_dat <- derivoce::horizontal_gradient(env_dat, "SST")  # adds an SST_grad column
-
-sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
-# sst_avg$sst is a [num_cells x num_ssn] matrix, same num_ssn indexing as
-# effort3d/jday3d/bft3d
-```
-
-**2. Configure and run.** List which covariate names (matching names in
-`occ_covariates`, e.g. `sst_avg` above) apply to which process, then pass the
-covariate list into `run_occupancy_model()`:
-
-```r
-library(msomgom)
-generate_config("my_run", covariates_psi = c("sst"), covariates_phi = c("sst"))
-# -> configs/my_run.yaml has covariates: { psi: [sst], phi: [sst], gamma: [] }
-
-result <- run_occupancy_model("configs/my_run.yaml", occ_covariates = list(sst = sst_avg$sst))
-result$evaluation$parameters # now includes mu.b.cov (psi) and mu.e.cov (phi)
-```
-
-Each process can take a different number of covariates (or none), including a
-different set of covariate names entirely - `covariates.gamma` above is empty,
-so colonization stays intercept-only while occupancy and persistence both get
-`sst`. Internally, since JAGS can't compile a covariate loop of length zero,
-the model's BUGS code is generated per run (`build_whale_model_code()` in
-`jags.R`) rather than being one static model, so each process's covariate
-block is included only when that process actually has covariates.
-
-Extending this further - to a true hierarchical multi-species model that fits
-all configured species jointly with shared priors - is a deliberately
-separate, larger follow-up.
-
-### Covariate effect plots (via fancyfx)
-
-A fit with covariates configured (above) is tagged `msomgom_fit` and carries
-the metadata needed to plot a covariate's fitted effect with
-[`fancyfx`](https://github.com/chross22/fancyfx) - the effect curve stacked
-above a rug of the raw covariate data, the same way `fancyfx` plots an
-`mgcv::gam`'s partial effects or any other model's predictions.
-`fancyfx` is optional (`Suggests`); msomgom depends on it, not the other way
-around - `effect_estimates.msomgom_fit()` is what makes `fancyfx` work here,
-not anything `fancyfx` itself knows about this package:
-
-```r
-# install.packages("devtools"); devtools::install_github("chross22/fancyfx")
-library(msomgom)
-library(fancyfx)
-
-fit <- fit_occupancy_model(arrays, config, occ_covariates = list(sst = sst_avg$sst))
-
-# the tidy estimate frame on its own:
-effect_estimates(fit, "sst")
-
-# or the full plot: effect curve + a rug of the raw covariate data above it
-rug_dat <- data.frame(sst = as.vector(sst_avg$sst))
-plotEffects(fit, rug_dat, "sst", xlab = "SST")
-```
-
-`scale = "link"` (the default) gives the covariate's own contribution to the
-linear predictor, centered at zero at the covariate's mean - the occupancy
-equivalent of a GAM's partial effect. `scale = "response"` gives the full
-predicted occupancy probability as the covariate varies, with any other
-covariates on the same process held at their mean. Since every msomgom fit is
-summarized from posterior draws, `interval` defaults to the credible interval
-(`"ci"`) rather than a `+/- 1 SE` band, the same way `fancyfx` treats a
-`brms`/`rstanarm` fit. Requires a `jags_params = "colext"` fit (the default) -
-a `"Z"`-mode fit only tracks occupancy states, not the coefficients this reads.
+→ [**Diagnostics and covariates**](vignettes/diagnostics.Rmd) covers all of it:
+evaluating a saved run without re-fitting, the debugging tools, the four maps,
+attaching covariates from local files or live from Copernicus, and effect plots
+through fancyfx.
 
 ## Data
 
@@ -542,6 +328,13 @@ tools/
 legacy/                            # archived pre-refactor scripts (gitignored, kept locally)
 docs/refactor_plan.md              # full history of the generalization refactor
 ```
+
+## Documentation
+
+| | |
+|---|---|
+| [Getting started](vignettes/getting-started.Rmd) | one complete run on synthetic data, end to end |
+| [Diagnostics and covariates](vignettes/diagnostics.Rmd) | why a fit looks wrong, and how to attach environmental covariates |
 
 ## Citing msomgom
 
