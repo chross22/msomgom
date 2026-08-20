@@ -156,7 +156,7 @@ per config. A process with none configured stays intercept-only.
 either the occupancy model's own season/year windows or arbitrary custom
 ones. It accepts an `sf` point object tagged with YEAR/MONTH/DAY from any of
 a few sources that all share that same shape:
-[`datamatch::accessEnvDat()`](https://github.com/chross22/datamatch), which
+[`datamatch::accessCopernicus()`](https://github.com/chross22/datamatch), which
 pulls live from the Copernicus Marine Service; local daily NetCDF files via
 this package's own `load_covariate_netcdf()`; or either of those further
 enriched by [`derivoce`](https://github.com/chross22/derivoce)'s derived
@@ -169,7 +169,7 @@ lags, integrals, ...), which consume and return the same shape:
 # (Suggests), installed the same way as this one:
 #   devtools::install_github("chross22/datamatch")
 #   devtools::install_github("chross22/derivoce")
-env_dat <- datamatch::accessEnvDat(
+env_dat <- datamatch::accessCopernicus(
   vars = "SST", years = 2018:2020, months = 1:12,
   bounding_box = list(xmin = -70, xmax = -66, ymin = 41, ymax = 44)
 )
@@ -189,7 +189,7 @@ prep <- prep_survey_data(config)
 arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
 
 # a synthetic covariate here, standing in for a real one from
-# load_covariate_netcdf(), datamatch::accessEnvDat(), or derivoce (see above)
+# load_covariate_netcdf(), datamatch::accessCopernicus(), or derivoce (see above)
 set.seed(1)
 windows <- season_windows_from_config(config)
 fake_sst <- matrix(

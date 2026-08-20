@@ -20,7 +20,7 @@ uses whatever names the NetCDF files themselves carry}
 \description{
 Reads a folder of covariate NetCDF files (one file per day, or one file
 with a daily time dimension - both are handled) into the same
-sf-point-per-day shape \code{datamatch::accessEnvDat()} returns: columns \code{x},
+sf-point-per-day shape \code{datamatch::accessCopernicus()} returns: columns \code{x},
 \code{y}, one column per variable, \code{YEAR}, \code{MONTH}, \code{DAY}, geometry.
 }
 \details{
@@ -37,7 +37,7 @@ env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 \seealso{
 \code{\link[=average_covariates]{average_covariates()}}, which consumes the result;
 \code{\link[=parse_date_from_filename]{parse_date_from_filename()}} for the filename-date fallback;
-\code{datamatch::accessEnvDat()} for fetching Copernicus data directly instead
+\code{datamatch::accessCopernicus()} for fetching Copernicus data directly instead
 of reading local files
 
 Other covariates:

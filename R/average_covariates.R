@@ -4,12 +4,12 @@
 # psi/phi/gamma covariate arrays), or arbitrary regular/custom date windows for
 # other uses.
 #
-# Input format matches chross22/datamatch::accessEnvDat()'s return value: an sf
+# Input format matches chross22/datamatch::accessCopernicus()'s return value: an sf
 # POINT object with one row per (grid-point, day), columns for each covariate
 # variable plus YEAR/MONTH/DAY. No hard dependency on the datamatch package
 # itself - load_covariate_netcdf() below builds the same shape directly from a
 # folder of daily NetCDF files, for when you already have local files instead
-# of calling accessEnvDat() to fetch them. chross22/derivoce's derived-covariate
+# of calling accessCopernicus() to fetch them. chross22/derivoce's derived-covariate
 # functions (gradients, distances, lags, integrals, ...) consume and return
 # that same shape too, so they slot in before average_covariates() with no
 # reshaping - see the README's "Environmental covariates" section.
@@ -97,7 +97,7 @@ regular_windows <- function(start_date, end_date, by = "1 month") {
 #'
 #' Reads a folder of covariate NetCDF files (one file per day, or one file
 #' with a daily time dimension - both are handled) into the same
-#' sf-point-per-day shape `datamatch::accessEnvDat()` returns: columns `x`,
+#' sf-point-per-day shape `datamatch::accessCopernicus()` returns: columns `x`,
 #' `y`, one column per variable, `YEAR`, `MONTH`, `DAY`, geometry.
 #'
 #' Date is read from each raster layer's time dimension when the file has one
@@ -112,7 +112,7 @@ regular_windows <- function(start_date, end_date, by = "1 month") {
 #' @return `sf` POINT object with one row per (grid-point, day)
 #' @seealso [average_covariates()], which consumes the result;
 #'   [parse_date_from_filename()] for the filename-date fallback;
-#'   `datamatch::accessEnvDat()` for fetching Copernicus data directly instead
+#'   `datamatch::accessCopernicus()` for fetching Copernicus data directly instead
 #'   of reading local files
 #' @family covariates
 #' @examples
@@ -188,7 +188,7 @@ parse_date_from_filename <- function(path) {
 #'
 #' @param env_dat `sf` POINT object with `YEAR`/`MONTH`/`DAY` columns and one
 #'   column per covariate variable (as returned by `load_covariate_netcdf()`,
-#'   `datamatch::accessEnvDat()`, or any of `derivoce`'s derived-covariate
+#'   `datamatch::accessCopernicus()`, or any of `derivoce`'s derived-covariate
 #'   functions, e.g. `derivoce::horizontal_gradient()`, run on either of those
 #'   - they consume and return this same shape)
 #' @param area_grid_sf `sf` polygon grid with a `grid_id` column (e.g.
@@ -205,7 +205,7 @@ parse_date_from_filename <- function(path) {
 #'   pipeline)
 #' @seealso [season_windows_from_config()] and [regular_windows()] for
 #'   building `windows`; [load_covariate_netcdf()] for building `env_dat`
-#'   from local files, or `datamatch::accessEnvDat()` for fetching it live from
+#'   from local files, or `datamatch::accessCopernicus()` for fetching it live from
 #'   Copernicus; `derivoce::horizontal_gradient()` and its siblings for
 #'   deriving further covariates (gradients, distances, lags, ...) before
 #'   averaging; [build_detection_arrays()] for `area_grid_sf`;
@@ -224,7 +224,7 @@ parse_date_from_filename <- function(path) {
 #' # or live from Copernicus, optionally enriched with a derived covariate -
 #' # both return the same env_dat shape average_covariates() expects:
 #' bb <- list(xmin = -70, xmax = -66, ymin = 41, ymax = 44)
-#' env_dat <- datamatch::accessEnvDat(vars = "SST", years = 2018:2020, months = 1:12,
+#' env_dat <- datamatch::accessCopernicus(vars = "SST", years = 2018:2020, months = 1:12,
 #'                                     bounding_box = bb)
 #' env_dat <- derivoce::horizontal_gradient(env_dat, "SST") # adds SST_grad
 #'

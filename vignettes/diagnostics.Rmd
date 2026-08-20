@@ -157,7 +157,7 @@ between them:
 
 - [`datamatch`](https://github.com/chross22/datamatch) (Ross, n.d.) fetches
   that shape live from the E.U. Copernicus Marine Service (Copernicus Marine
-  Service, n.d.) via `datamatch::accessEnvDat()`
+  Service, n.d.) via `datamatch::accessCopernicus()`
 - [`derivoce`](https://github.com/chross22/derivoce) computes derived
   covariates (spatial/temporal gradients, distance to shore/front/isobath,
   lags, integrals, eddy kinetic energy, ...) from that same shape, returning
@@ -198,7 +198,7 @@ env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 # or live from Copernicus, optionally enriched with a derived covariate -
 # both return the same env_dat shape average_covariates() expects, so this
 # is a drop-in alternative to the load_covariate_netcdf() line above:
-# env_dat <- datamatch::accessEnvDat(vars = "SST", years = 2018:2020, months = 1:12,
+# env_dat <- datamatch::accessCopernicus(vars = "SST", years = 2018:2020, months = 1:12,
 #                                     bounding_box = list(xmin = -70, xmax = -66, ymin = 41, ymax = 44))
 # env_dat <- derivoce::horizontal_gradient(env_dat, "SST")  # adds an SST_grad column
 

@@ -9,7 +9,7 @@ average_covariates(env_dat, area_grid_sf, windows, vars = NULL)
 \arguments{
 \item{env_dat}{\code{sf} POINT object with \code{YEAR}/\code{MONTH}/\code{DAY} columns and one
 column per covariate variable (as returned by \code{load_covariate_netcdf()},
-\code{datamatch::accessEnvDat()}, or any of \code{derivoce}'s derived-covariate
+\code{datamatch::accessCopernicus()}, or any of \code{derivoce}'s derived-covariate
 functions, e.g. \code{derivoce::horizontal_gradient()}, run on either of those
 \itemize{
 \item they consume and return this same shape)
@@ -48,7 +48,7 @@ env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 # or live from Copernicus, optionally enriched with a derived covariate -
 # both return the same env_dat shape average_covariates() expects:
 bb <- list(xmin = -70, xmax = -66, ymin = 41, ymax = 44)
-env_dat <- datamatch::accessEnvDat(vars = "SST", years = 2018:2020, months = 1:12,
+env_dat <- datamatch::accessCopernicus(vars = "SST", years = 2018:2020, months = 1:12,
                                     bounding_box = bb)
 env_dat <- derivoce::horizontal_gradient(env_dat, "SST") # adds SST_grad
 
@@ -59,7 +59,7 @@ sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 \seealso{
 \code{\link[=season_windows_from_config]{season_windows_from_config()}} and \code{\link[=regular_windows]{regular_windows()}} for
 building \code{windows}; \code{\link[=load_covariate_netcdf]{load_covariate_netcdf()}} for building \code{env_dat}
-from local files, or \code{datamatch::accessEnvDat()} for fetching it live from
+from local files, or \code{datamatch::accessCopernicus()} for fetching it live from
 Copernicus; \code{derivoce::horizontal_gradient()} and its siblings for
 deriving further covariates (gradients, distances, lags, ...) before
 averaging; \code{\link[=build_detection_arrays]{build_detection_arrays()}} for \code{area_grid_sf};
