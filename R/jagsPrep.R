@@ -35,6 +35,30 @@
 #' }
 #' @export
 build_detection_arrays <- function(tmpdat, season_info, config) {
+  # prep_survey_data() warns and returns an empty frame when a filter drops
+  # everything, which is right - the frame is still worth inspecting. Here it
+  # is not: every array below is built by splitting `tmpdat`, and on zero rows
+  # that fails deep inside a split with "Not compatible with STRSXP:
+  # [type=NULL]", which names neither the cause nor anything to change.
+  if (nrow(tmpdat) == 0) {
+    stop("No survey records to build arrays from - prep_survey_data() returned ",
+         "nothing, and it will have warned which filter emptied it.\n  Check ",
+         "survey.platform_code, survey.fileid_prefixes and dates.* against what ",
+         "is actually in the data file; the defaults describe one particular ",
+         "survey and are wrong for any other.\n  prep_survey_data(config, ",
+         "verbose = TRUE) reports each filter's effect in turn, and ",
+         "diagnose_pipeline(config) runs the whole prep stage with that on.",
+         call. = FALSE)
+  }
+  if (!any(tmpdat$on.off.eff == 1, na.rm = TRUE)) {
+    stop("No on-effort records to build arrays from: ", nrow(tmpdat),
+         " record(s) survived the platform/FILEID/date filters, but none are ",
+         "on-effort, so there are no detection opportunities to fit on.\n  ",
+         "Check survey.on_effort_legtypes against the LEGTYPE codes in the data ",
+         "(see ?generate_config) - different platforms use different codes.",
+         call. = FALSE)
+  }
+
   make_figs <- isTRUE(config$output$make_figs)
   if (make_figs) {
     # webshot: needed to save maps. on new systems, may have to do: webshot::install_phantomjs()

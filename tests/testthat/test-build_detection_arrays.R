@@ -73,3 +73,38 @@ test_that("a FILEID spanning more than one day errors naming the file and its da
   expect_error(build_detection_arrays(prep$tmpdat, prep$season_info, config),
                paste0("FILEID '", fids[1], "'.*spans 2 calendar days"))
 })
+
+# The prep output itself, before any array is built - what the two guards
+# below are handed in the real failure.
+make_prep <- function() {
+  configs_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  project_dir <- withr::local_tempdir(.local_envir = parent.frame())
+  path <- generate_config(
+    "guard_test", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/mock.csv",
+    beg_year = 2018, end_year = 2018, beg_month = 8, end_month = 9
+  )
+  generate_mock_data(path, surveys_per_season = 3, points_per_survey = 8, seed = 5)
+  config <- load_config(path)
+  list(prep = prep_survey_data(config), config = config)
+}
+
+test_that("an empty prep result is refused by name, not by a split failure", {
+  # The real-world path: a config whose filters describe a different survey.
+  # Before this guard the failure was "Not compatible with STRSXP: [type=NULL]"
+  # from inside a split, which named neither the cause nor the fix.
+  res <- make_prep()
+  empty <- res$prep$tmpdat[0, , drop = FALSE]
+
+  expect_error(build_detection_arrays(empty, res$prep$season_info, res$config),
+               "No survey records to build arrays from")
+})
+
+test_that("records that all fall off-effort are refused by name", {
+  res <- make_prep()
+  off <- res$prep$tmpdat
+  off$on.off.eff <- 0
+
+  expect_error(build_detection_arrays(off, res$prep$season_info, res$config),
+               "none are on-effort")
+})
