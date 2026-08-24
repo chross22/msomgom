@@ -20,10 +20,10 @@ One row per (process, covariate): which named coefficient tracks it in the
 \code{mcmc.list}, and the raw-scale mean/sd/min/max needed to convert between the
 standardized scale the model was fit on and the covariate's own units.
 Attached to \code{fit_occupancy_model()}'s return value as the
-\code{"msomgom_covariates"} attribute.
+\code{"dynocc_covariates"} attribute.
 }
 \seealso{
 \code{\link[=fit_occupancy_model]{fit_occupancy_model()}}, which calls this;
-\code{effect_estimates.msomgom_fit()} (in \code{R/effect_estimates.R}), which reads it
+\code{effect_estimates.dynocc_fit()} (in \code{R/effect_estimates.R}), which reads it
 }
 \keyword{internal}

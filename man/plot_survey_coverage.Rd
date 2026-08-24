@@ -43,8 +43,11 @@ plot_survey_coverage(arrays, season = 3)
 \code{\link[=build_detection_arrays]{build_detection_arrays()}}, which produces \code{arrays}
 
 Other diagnostic plots:
+\code{\link[=plot_convergence]{plot_convergence()}},
 \code{\link[=plot_covariate_map]{plot_covariate_map()}},
+\code{\link[=plot_detection_history]{plot_detection_history()}},
 \code{\link[=plot_occupancy_map]{plot_occupancy_map()}},
+\code{\link[=plot_process_map]{plot_process_map()}},
 \code{\link[=plot_sightings]{plot_sightings()}}
 }
 \concept{diagnostic plots}

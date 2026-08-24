@@ -42,6 +42,8 @@ of reading local files
 
 Other covariates:
 \code{\link[=average_covariates]{average_covariates()}},
-\code{\link[=effect_estimates.msomgom_fit]{effect_estimates.msomgom_fit()}}
+\code{\link[=build_covariates]{build_covariates()}},
+\code{\link[=effect_estimates.dynocc_fit]{effect_estimates.dynocc_fit()}},
+\code{\link[=predict.dynocc_fit]{predict.dynocc_fit()}}
 }
 \concept{covariates}

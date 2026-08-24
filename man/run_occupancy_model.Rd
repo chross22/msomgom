@@ -24,7 +24,7 @@ arrays) -> \code{fit_occupancy_model()} (fit the model) ->
 }
 \examples{
 \dontrun{
-library(msomgom)
+library(dynocc)
 result <- run_occupancy_model("configs/bof_riwh.yaml")
 result$fit          # the fitted mcmc.list
 result$evaluation    # convergence diagnostics / parameter summary, see evaluate_occupancy_model()

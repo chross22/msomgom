@@ -134,7 +134,7 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
       mat.st <- (mat - cov_mean) / cov_sd
       mat.st[is.na(mat.st)] <- 0
       out[, , , c_idx] <- array(dim = c(n.site, n.season, n.year), data = as.vector(mat.st))
-      # kept for effect_estimates.msomgom_fit() (R/effect_estimates.R), so a
+      # kept for effect_estimates.dynocc_fit() (R/effect_estimates.R), so a
       # covariate's fitted effect can be evaluated on its own raw scale
       # without needing the original covariate matrix again
       meta[[c_idx]] <- list(name = cov_names[c_idx], mean = cov_mean, sd = cov_sd,
@@ -213,9 +213,9 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   # Tagged with its own class (kept alongside "mcmc.list", so every existing
   # coda-based use - summary(), plot(), as.matrix(), etc. - is unaffected) and
   # the covariate metadata needed to evaluate a fitted covariate's effect on
-  # its own raw scale, for effect_estimates.msomgom_fit() (R/effect_estimates.R).
-  class(whale.pars) <- c("msomgom_fit", class(whale.pars))
-  attr(whale.pars, "msomgom_covariates") <- build_covariate_metadata(psi_cov, phi_cov, gamma_cov)
+  # its own raw scale, for effect_estimates.dynocc_fit() (R/effect_estimates.R).
+  class(whale.pars) <- c("dynocc_fit", class(whale.pars))
+  attr(whale.pars, "dynocc_covariates") <- build_covariate_metadata(psi_cov, phi_cov, gamma_cov)
 
   if (isTRUE(config$jags$save_results)) {
     output_dir <- config$paths$output_dir
@@ -234,7 +234,7 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
 #' `mcmc.list`, and the raw-scale mean/sd/min/max needed to convert between the
 #' standardized scale the model was fit on and the covariate's own units.
 #' Attached to `fit_occupancy_model()`'s return value as the
-#' `"msomgom_covariates"` attribute.
+#' `"dynocc_covariates"` attribute.
 #'
 #' @param psi_cov,phi_cov,gamma_cov the `list(n_cov, array, meta)` results of
 #'   `fit_occupancy_model()`'s internal `process_covariate_array()`
@@ -242,7 +242,7 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
 #'   `n_cov`, `mean`, `sd`, `min`, `max` - one row per configured covariate -
 #'   or `NULL` if no process has any covariates configured
 #' @seealso [fit_occupancy_model()], which calls this;
-#'   `effect_estimates.msomgom_fit()` (in `R/effect_estimates.R`), which reads it
+#'   `effect_estimates.dynocc_fit()` (in `R/effect_estimates.R`), which reads it
 #' @keywords internal
 build_covariate_metadata <- function(psi_cov, phi_cov, gamma_cov) {
   covariate_rows <- function(cov, process, prefix) {

@@ -4,7 +4,7 @@
 # check: it wants to run on every push, not quarterly.
 #
 # Three failure modes, all silent:
-#   * no inst/CITATION, so citation("msomgom") falls back to an auto-generated
+#   * no inst/CITATION, so citation("dynocc") falls back to an auto-generated
 #     entry with no author and no URL;
 #   * a version hard-coded in inst/CITATION, which goes stale the moment
 #     DESCRIPTION is bumped and then disagrees between machines;
@@ -26,7 +26,7 @@ test_that("inst/CITATION exists and parses", {
 
   ver <- read.dcf(file.path(root, "DESCRIPTION"), fields = "Version")[1, 1]
   parsed <- utils::readCitationFile(
-    cit, meta = list(Package = "msomgom", Version = ver)
+    cit, meta = list(Package = "dynocc", Version = ver)
   )
   expect_gte(length(parsed), 1)
 })
@@ -55,5 +55,5 @@ test_that("the README says how to cite the package", {
 
   txt <- paste(readLines(rd, warn = FALSE), collapse = "\n")
   expect_match(txt, "(?im)^#+\\s*(how to )?cit(e|ing|ation)", perl = TRUE, all = FALSE)
-  expect_match(txt, "msomgom", fixed = TRUE)
+  expect_match(txt, "dynocc", fixed = TRUE)
 })

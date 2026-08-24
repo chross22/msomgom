@@ -1,5 +1,5 @@
 citHeader(
-  "msomgom implements the dynamic (multi-season, colonization/persistence) ",
+  "dynocc implements the dynamic (multi-season, colonization/persistence) ",
   "occupancy model of MacKenzie et al. (2003), an extension of the ",
   "single-season detection model of MacKenzie et al. (2002). Cite the 2003 ",
   "paper for the method, the 2002 paper for the single-season model it ",
@@ -45,10 +45,10 @@ bibentry(
 
 bibentry(
   bibtype  = "Manual",
-  key      = "msomgom",
-  title    = "msomgom: Multi-Season Occupancy Model of the Gulf of Maine",
+  key      = "dynocc",
+  title    = "dynocc: Multi-Season Occupancy Model of the Gulf of Maine",
   author   = person("Camille", "Ross"),
   year     = format(Sys.Date(), "%Y"),
   note     = paste0("R package version ", meta$Version),
-  url      = "https://github.com/chross22/msomgom"
+  url      = "https://github.com/chross22/dynocc"
 )

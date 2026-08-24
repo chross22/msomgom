@@ -23,7 +23,11 @@ the grid matches exactly)}
 (e.g. from \code{season_windows_from_config()} or \code{regular_windows()})}
 
 \item{vars}{covariate column names in \code{env_dat} to average; if \code{NULL},
-uses every column except \code{YEAR}/\code{MONTH}/\code{DAY}/geometry}
+uses every averageable column except the time columns
+(\code{YEAR}/\code{MONTH}/\code{DAY}/\code{HOUR}), the geometry, and the provenance columns
+datamatch (>= 0.2.0) sends along with the values (\verb{<var>_source},
+\verb{<var>_depth}, \code{.datamatch_source}) - those describe a covariate rather
+than being one. Any other non-numeric column is skipped with a message}
 }
 \value{
 named list of \verb{[num_cells x nrow(windows)]} matrices, one per
@@ -67,7 +71,9 @@ averaging; \code{\link[=build_detection_arrays]{build_detection_arrays()}} for \
 \code{occ_covariates}
 
 Other covariates:
-\code{\link[=effect_estimates.msomgom_fit]{effect_estimates.msomgom_fit()}},
-\code{\link[=load_covariate_netcdf]{load_covariate_netcdf()}}
+\code{\link[=build_covariates]{build_covariates()}},
+\code{\link[=effect_estimates.dynocc_fit]{effect_estimates.dynocc_fit()}},
+\code{\link[=load_covariate_netcdf]{load_covariate_netcdf()}},
+\code{\link[=predict.dynocc_fit]{predict.dynocc_fit()}}
 }
 \concept{covariates}

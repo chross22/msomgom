@@ -1,5 +1,5 @@
-Package: msomgom
-Title: Multi-Season Occupancy Model of the Gulf of Maine
+Package: dynocc
+Title: Dynamic Occupancy Models from Survey Sightings
 Version: 0.1.0
 Authors@R:
     person("Camille", "Ross", email = "camille.ross@maine.edu", role = c("aut", "cre"))
@@ -53,6 +53,6 @@ Remotes:
     chross22/narwcr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-URL: https://github.com/chross22/msomgom
-BugReports: https://github.com/chross22/msomgom/issues
+URL: https://github.com/chross22/dynocc
+BugReports: https://github.com/chross22/dynocc/issues
 Config/roxygen2/version: 8.1.0

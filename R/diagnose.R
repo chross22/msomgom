@@ -44,7 +44,7 @@ diagnose_pipeline <- function(config_path, occ_covariates = NULL) {
     ok <<- FALSE
   }
 
-  cat("msomgom pipeline diagnosis\n")
+  cat("dynocc pipeline diagnosis\n")
 
   header("Config")
   config <- tryCatch(

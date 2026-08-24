@@ -1,40 +1,40 @@
-# msomgom_covariate_lookup(): pure logic, no JAGS/fancyfx needed.
+# dynocc_covariate_lookup(): pure logic, no JAGS/fancyfx needed.
 
 make_fake_fit <- function(meta) {
-  fit <- structure(list(), class = c("msomgom_fit", "mcmc.list"))
-  attr(fit, "msomgom_covariates") <- meta
+  fit <- structure(list(), class = c("dynocc_fit", "mcmc.list"))
+  attr(fit, "dynocc_covariates") <- meta
   fit
 }
 
-test_that("msomgom_covariate_lookup finds the right row by name", {
+test_that("dynocc_covariate_lookup finds the right row by name", {
   meta <- data.frame(name = c("sst", "chl"), process = c("psi", "phi"),
                       prefix = c("b", "e"), index = c(1, 1), n_cov = c(1, 1),
                       mean = c(15, 2), sd = c(2, 0.5), min = c(10, 1), max = c(20, 3))
   fit <- make_fake_fit(meta)
 
-  hit <- msomgom_covariate_lookup(fit, "chl")
+  hit <- dynocc_covariate_lookup(fit, "chl")
   expect_equal(hit$process, "phi")
   expect_equal(hit$prefix, "e")
 })
 
-test_that("msomgom_covariate_lookup errors on an unknown covariate", {
+test_that("dynocc_covariate_lookup errors on an unknown covariate", {
   meta <- data.frame(name = "sst", process = "psi", prefix = "b", index = 1,
                       n_cov = 1, mean = 15, sd = 2, min = 10, max = 20)
   fit <- make_fake_fit(meta)
-  expect_error(msomgom_covariate_lookup(fit, "nope"), "not a covariate")
+  expect_error(dynocc_covariate_lookup(fit, "nope"), "not a covariate")
 })
 
-test_that("msomgom_covariate_lookup errors when metadata is missing entirely", {
+test_that("dynocc_covariate_lookup errors when metadata is missing entirely", {
   fit <- make_fake_fit(NULL)
-  expect_error(msomgom_covariate_lookup(fit, "sst"), "no covariate metadata")
+  expect_error(dynocc_covariate_lookup(fit, "sst"), "no covariate metadata")
 })
 
-test_that("msomgom_covariate_lookup errors when a covariate is on more than one process", {
+test_that("dynocc_covariate_lookup errors when a covariate is on more than one process", {
   meta <- data.frame(name = c("sst", "sst"), process = c("psi", "phi"),
                       prefix = c("b", "e"), index = c(1, 1), n_cov = c(1, 1),
                       mean = c(15, 15), sd = c(2, 2), min = c(10, 10), max = c(20, 20))
   fit <- make_fake_fit(meta)
-  expect_error(msomgom_covariate_lookup(fit, "sst"), "more than one process")
+  expect_error(dynocc_covariate_lookup(fit, "sst"), "more than one process")
 })
 
 # End-to-end: real (tiny) JAGS fits, so these need a working rjags/dclone/JAGS
@@ -74,10 +74,10 @@ test_that("fit_occupancy_model tags class and attaches correct covariate metadat
 
   fit <- fit_occupancy_model(res$arrays, res$config, occ_covariates = list(sst = sst))
 
-  expect_s3_class(fit, "msomgom_fit")
+  expect_s3_class(fit, "dynocc_fit")
   expect_s3_class(fit, "mcmc.list") # unaffected: coda methods still dispatch
 
-  meta <- attr(fit, "msomgom_covariates")
+  meta <- attr(fit, "dynocc_covariates")
   expect_equal(meta$name, "sst")
   expect_equal(meta$process, "psi")
   expect_equal(meta$prefix, "b")
@@ -92,10 +92,10 @@ test_that("fit_occupancy_model tags class and attaches correct covariate metadat
 test_that("fit_occupancy_model with no covariates configured attaches no metadata", {
   res <- make_effect_config("effect_none")
   fit <- fit_occupancy_model(res$arrays, res$config)
-  expect_null(attr(fit, "msomgom_covariates"))
+  expect_null(attr(fit, "dynocc_covariates"))
 })
 
-test_that("effect_estimates() on a msomgom_fit returns fancyfx's documented shape", {
+test_that("effect_estimates() on a dynocc_fit returns fancyfx's documented shape", {
   skip_if_not_installed("fancyfx")
   res <- make_effect_config("effect_shape", covariates_psi = c("sst"))
   windows <- season_windows_from_config(res$config)
@@ -174,7 +174,7 @@ test_that("a second covariate on the same process resolves its bracketed mcmc co
   chl <- fake_covariate_matrix(res$arrays, windows, seed = 2, mean = 2, sd = 0.5)
   fit <- fit_occupancy_model(res$arrays, res$config, occ_covariates = list(sst = sst, chl = chl))
 
-  meta <- attr(fit, "msomgom_covariates")
+  meta <- attr(fit, "dynocc_covariates")
   expect_equal(sort(meta$name), c("chl", "sst"))
   expect_true(all(meta$n_cov == 2))
 
@@ -187,7 +187,7 @@ test_that("a second covariate on the same process resolves its bracketed mcmc co
   expect_false(isTRUE(all.equal(est_sst$.estimate, est_chl$.estimate)))
 })
 
-test_that("plotEffects() runs end-to-end on a msomgom_fit", {
+test_that("plotEffects() runs end-to-end on a dynocc_fit", {
   skip_if_not_installed("fancyfx")
   res <- make_effect_config("effect_plot", covariates_psi = c("sst"))
   windows <- season_windows_from_config(res$config)

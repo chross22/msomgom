@@ -1,6 +1,77 @@
-# msomgom (development version)
+# dynocc (development version)
 
-* msomgom now depends on **narwcr** (chross22/narwcr) instead of keeping its
+* **Any datamatch or derivoce covariate can now go into the model.**
+  `build_covariates()` runs the whole covariate stage from the config alone:
+  each entry under `covariates.sources` is a pipeline that names a datamatch
+  access function and then any number of derivoce derive steps, and the result
+  is averaged onto the model's own grid and seasons. Because a recipe *names*
+  the function rather than picking from a fixed menu, all seven datamatch
+  access functions (Copernicus, HYCOM, ERDDAP, FVCOM, CCMP, CEFI, OB.DAAC) and
+  every derivoce function are reachable, including ones either package gains
+  later. `years`/`months`/`bounding_box` are filled in from the config's date
+  range and study-area polygon, so a recipe only states what they don't imply.
+  Only exports of datamatch, derivoce and dynocc can be named - a config file
+  is data, not code. A process names *columns*, not recipes, and a column
+  configured on a process that no recipe produced is an error naming both
+  sides rather than a fit quietly missing a covariate.
+
+* **A `colext` fit can now be mapped.** `predict()` on a `dynocc_fit` returns
+  the per-cell posterior of initial occupancy (`psi`), persistence (`phi`) or
+  colonization (`gamma`), and `plot_process_map()` draws it. Each posterior
+  draw's coefficients are pushed through that draw's inverse logit at every
+  cell, so the summaries are posterior summaries of the surface rather than
+  transformations of coefficient summaries, and the fit's own standardization
+  of each covariate is replayed from the metadata stored at fitting time.
+  This is the spatial view a coefficient-level fit implies but never stores -
+  `plot_occupancy_map()` still needs `jags_params = "Z"` for realized
+  occupancy. Two limits are documented rather than papered over: only the
+  hyper-mean intercepts are tracked, so a map is the population-level surface
+  and `season` moves it through covariate values alone; and a process with no
+  covariates is flat by construction, which is said out loud rather than
+  drawn as if it meant something.
+
+* `plot_occupancy_map()` and `plot_process_map()` both take `stat = "sd"` for
+  the posterior-uncertainty map. A striking mean surface over cells the
+  posterior barely constrains is a prior in a costume, and the two maps are
+  meant to be read together.
+
+* **The package is now called `dynocc`** (was `msomgom`). It was never
+  Gulf-of-Maine-specific once study area, species, and seasons went
+  config-driven, and the model it fits - single-species, multi-season with
+  colonization/persistence - is exactly what the literature calls a dynamic
+  occupancy model. The fitted-model class follows: `msomgom_fit` is now
+  `dynocc_fit`, so a fit saved by an older version won't dispatch to
+  `effect_estimates()` until refit (the underlying `mcmc.list` methods are
+  unaffected). The GitHub repository redirects from the old name.
+
+* `average_covariates()` keeps up with what datamatch (>= 0.2.0) now sends
+  along with the values: the `<var>_source`/`<var>_depth` provenance columns,
+  `.datamatch_source`, and an `HOUR` column on hourly data are excluded from
+  the default `vars` instead of being averaged - a character `SST_source`
+  column used to become a covariate of `NA`s behind a `mean()` warning. A
+  provenance suffix only counts when its base variable is present, so a real
+  covariate that merely ends in `_depth` (`mixed_layer_depth`, say) is
+  untouched; any other non-numeric column is skipped with a message. Naming a
+  missing or non-numeric column in `vars` explicitly is now a clear error
+  instead of a quiet `NA` matrix.
+
+* `effect_estimates.dynocc_fit()` accepts the `data` argument
+  `fancyfx::effect_estimates()` (>= 0.11.0) added to its signature - accepted
+  and ignored, since a dynocc fit keeps the covariate data it was fit on and
+  the evaluation range always comes from there.
+
+* Two new diagnostic plots, in the same look-before-you-fit spirit as the
+  existing four: `plot_detection_history()` draws the site x season
+  detection/effort tiles that are the occupancy likelihood's entire
+  information content, and `plot_convergence()` draws Rhat against effective
+  sample size for every tracked parameter, labeling the ones outside the
+  thresholds `evaluate_occupancy_model()` warns about.
+
+* `docs/diagnostics-architecture.md` records the plan for the analysis layer:
+  a `dynoccfit` repository mimicking `dsmfit`'s targets-and-renv workflow, with
+  gut-check figure targets at each pipeline seam.
+
+* dynocc now depends on **narwcr** (chross22/narwcr) instead of keeping its
   own copy of the NARWC vocabulary. `standardize_survey_columns()` runs
   `narwcr::standardize_narwc_columns()` first, so the alias table, the `Trk*`
   GPS-track preferred sources, the alias priorities and the feet-to-metres
@@ -161,16 +232,16 @@
   (e.g. `LEGTYPE` is really 8.A.21, not 8.A.20 as previously cited).
 * A fit with covariates configured can now be plotted with
   [`fancyfx`](https://github.com/chross22/fancyfx) (optional, `Suggests`):
-  `fit_occupancy_model()` tags its result as `msomgom_fit` and attaches the
-  metadata `effect_estimates.msomgom_fit()` needs to plot a covariate's
+  `fit_occupancy_model()` tags its result as `dynocc_fit` and attaches the
+  metadata `effect_estimates.dynocc_fit()` needs to plot a covariate's
   fitted effect - `fancyfx::plotEffects(fit, dat, "sst")` draws the effect
   curve with a rug of the raw data above it, the same way it plots an
   `mgcv::gam`'s partial effects. See the README's "Covariate effect plots"
   section.
 
-# msomgom 0.1.0
+# dynocc 0.1.0
 
-First tagged release. `msomgom` fits a dynamic (multi-season,
+First tagged release. `dynocc` fits a dynamic (multi-season,
 colonization/persistence) occupancy model, following MacKenzie et al.
 (2003), to cetacean vessel-survey sightings via JAGS. Everything below is
 config-driven; nothing is hardcoded to the Bay of Fundy/right-whale case it
@@ -182,7 +253,7 @@ was originally built around.
   installable R package (`DESCRIPTION`/`NAMESPACE`, `R/`, `man/`, `inst/`,
   `vignettes/`, `tests/testthat/`). `devtools::check()` passes 0 errors/0
   warnings/0 notes.
-* `vignette("getting-started", package = "msomgom")` walks through the whole
+* `vignette("getting-started", package = "dynocc")` walks through the whole
   pipeline end-to-end on mock data, including two real JAGS fits.
 * A `testthat` suite covers both pure-logic units and full end-to-end
   pipeline runs against mock data.

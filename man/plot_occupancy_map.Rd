@@ -4,7 +4,14 @@
 \alias{plot_occupancy_map}
 \title{Map posterior occupancy probability across the study grid}
 \usage{
-plot_occupancy_map(fit, arrays, year = NULL, main = NULL, ...)
+plot_occupancy_map(
+  fit,
+  arrays,
+  year = NULL,
+  stat = c("mean", "sd"),
+  main = NULL,
+  ...
+)
 }
 \arguments{
 \item{fit}{an \code{mcmc.list} that tracked \code{Z} (e.g. from
@@ -16,13 +23,18 @@ same one \code{fit} was fit against, so sites/grid cells line up)}
 
 \item{year}{which year to show; defaults to the last year tracked in \code{fit}}
 
-\item{main}{plot title; auto-generated from \code{year} if \code{NULL}}
+\item{stat}{\code{"mean"} (the default) or \code{"sd"}: the posterior mean of \code{Z} is
+the occupancy map, and its posterior SD is the uncertainty map - a cell
+the chains never agree on shows up bright in \code{"sd"} and unremarkable in
+\code{"mean"}}
+
+\item{main}{plot title; auto-generated from \code{year}/\code{stat} if \code{NULL}}
 
 \item{...}{passed on to \code{plot()}}
 }
 \value{
 invisibly, \code{arrays$area_grid_sf} with an \code{occupancy} column added
-(posterior mean \code{Z} for the chosen year)
+(posterior mean or SD of \code{Z} for the chosen year, per \code{stat})
 }
 \description{
 Plots posterior mean occupancy (the latent state \code{Z}) per grid cell for
@@ -40,11 +52,16 @@ plot_occupancy_map(fit, arrays, year = 2)
 }
 \seealso{
 \code{\link[=plot_survey_coverage]{plot_survey_coverage()}}, \code{\link[=plot_sightings]{plot_sightings()}}, \code{\link[=plot_covariate_map]{plot_covariate_map()}},
+\code{\link[=plot_process_map]{plot_process_map()}} for the fitted psi/phi/gamma surfaces of a
+\code{"colext"} fit (which tracks no \code{Z} to map),
 \code{\link[=compare_naive_vs_modeled_occupancy]{compare_naive_vs_modeled_occupancy()}} for the same numbers as a table,
 \code{\link[=load_mcmc_list]{load_mcmc_list()}} for how a saved \code{.RData} path is resolved
 
 Other diagnostic plots:
+\code{\link[=plot_convergence]{plot_convergence()}},
 \code{\link[=plot_covariate_map]{plot_covariate_map()}},
+\code{\link[=plot_detection_history]{plot_detection_history()}},
+\code{\link[=plot_process_map]{plot_process_map()}},
 \code{\link[=plot_sightings]{plot_sightings()}},
 \code{\link[=plot_survey_coverage]{plot_survey_coverage()}}
 }

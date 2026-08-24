@@ -15,7 +15,7 @@
 # reshaping - see the README's "Environmental covariates" section.
 #
 # Typical use, tied to an occupancy-model config:
-#   library(msomgom)
+#   library(dynocc)
 #   config <- load_config("configs/bof_riwh.yaml")
 #   env_dat <- load_covariate_netcdf("data/covariates/sst", var_names = "sst")
 #   windows <- season_windows_from_config(config)
@@ -197,7 +197,11 @@ parse_date_from_filename <- function(path) {
 #' @param windows data.frame with `start_date`/`end_date`/`label` columns
 #'   (e.g. from `season_windows_from_config()` or `regular_windows()`)
 #' @param vars covariate column names in `env_dat` to average; if `NULL`,
-#'   uses every column except `YEAR`/`MONTH`/`DAY`/geometry
+#'   uses every averageable column except the time columns
+#'   (`YEAR`/`MONTH`/`DAY`/`HOUR`), the geometry, and the provenance columns
+#'   datamatch (>= 0.2.0) sends along with the values (`<var>_source`,
+#'   `<var>_depth`, `.datamatch_source`) - those describe a covariate rather
+#'   than being one. Any other non-numeric column is skipped with a message
 #' @return named list of `[num_cells x nrow(windows)]` matrices, one per
 #'   covariate variable, with columns ordered/labeled to match `windows$label`
 #'   (`windows$ssn_no` if you used `season_windows_from_config()`, so column
@@ -233,9 +237,51 @@ parse_date_from_filename <- function(path) {
 #' }
 #' @export
 average_covariates <- function(env_dat, area_grid_sf, windows, vars = NULL) {
+  columns <- sf::st_drop_geometry(env_dat)
+  averageable <- function(v) is.numeric(columns[[v]]) || is.logical(columns[[v]])
+
   if (is.null(vars)) {
-    non_var_cols <- c("YEAR", "MONTH", "DAY", attr(env_dat, "sf_column"))
+    non_var_cols <- c("YEAR", "MONTH", "DAY", "HOUR", attr(env_dat, "sf_column"))
     vars <- setdiff(names(env_dat), non_var_cols)
+
+    # datamatch (>= 0.2.0) sends provenance along with the values: a
+    # `<var>_source` label and a `<var>_depth` per covariate, plus
+    # `.datamatch_source` on some paths. Those columns describe a covariate,
+    # they aren't one, and the mean of a depth is not the depth any value came
+    # from. Recognized by their base variable being present, so a real
+    # covariate that merely ends in `_depth` (mixed_layer_depth, say) is
+    # untouched.
+    provenance <- (grepl("_(source|depth)$", vars) &
+                     sub("_(source|depth)$", "", vars) %in% names(env_dat)) |
+      vars == ".datamatch_source"
+    vars <- vars[!provenance]
+
+    not_averageable <- vars[!vapply(vars, averageable, logical(1))]
+    if (length(not_averageable)) {
+      message("Skipping non-numeric column(s): ",
+              paste(not_averageable, collapse = ", "),
+              " - a covariate has to be averageable. Pass `vars` explicitly ",
+              "if one of these was meant to be one.")
+      vars <- setdiff(vars, not_averageable)
+    }
+    if (!length(vars)) {
+      stop("No averageable covariate columns found in env_dat - every column is ",
+           "either a time column (YEAR/MONTH/DAY/HOUR), geometry, provenance, ",
+           "or non-numeric.")
+    }
+  } else {
+    missing_vars <- setdiff(vars, names(env_dat))
+    if (length(missing_vars)) {
+      stop("vars not found in env_dat: ", paste(missing_vars, collapse = ", "),
+           ". Columns present: ",
+           paste(setdiff(names(env_dat), attr(env_dat, "sf_column")), collapse = ", "))
+    }
+    not_averageable <- vars[!vapply(vars, averageable, logical(1))]
+    if (length(not_averageable)) {
+      stop("Can't average non-numeric column(s): ",
+           paste(not_averageable, collapse = ", "),
+           ". A `<var>_source` column is datamatch provenance, not a covariate.")
+    }
   }
 
   env_dat <- sf::st_transform(env_dat, sf::st_crs(area_grid_sf))

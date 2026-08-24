@@ -1,4 +1,4 @@
-# msomgom: Multi-Season Occupancy Model of the Gulf of Maine
+# dynocc: Multi-Season Occupancy Model of the Gulf of Maine
 
 A dynamic (multi-season, colonization/persistence) occupancy model — following
 the MacKenzie et al. (2003) formulation, itself an extension of the
@@ -19,14 +19,14 @@ hierarchical multi-species model later doesn't require redoing that part. See
 [`docs/refactor_plan.md`](docs/refactor_plan.md) for the full history of how this
 pipeline got to its current shape and why.
 
-`msomgom` is a regular R package (`devtools::check()` passes with 0 errors/0
+`dynocc` is a regular R package (`devtools::check()` passes with 0 errors/0
 warnings/0 notes). The fastest way to see it work end-to-end is the vignette:
 
 ```r
-vignette("getting-started", package = "msomgom")
+vignette("getting-started", package = "dynocc")
 ```
 
-(Only found if msomgom was installed with `build_vignettes = TRUE` - see
+(Only found if dynocc was installed with `build_vignettes = TRUE` - see
 [Install the package](#2-install-the-package) below; it's not the default.)
 
 **Contents:** [Quick start](#quick-start) · [Setup](#setup) · [Usage](#usage) ·
@@ -39,8 +39,8 @@ and fits the model against it, all in-memory in a temp directory:
 
 ```r
 # install.packages("devtools")
-# devtools::install_github("chross22/msomgom", build_vignettes = TRUE, dependencies = TRUE)
-library(msomgom)
+# devtools::install_github("chross22/dynocc", build_vignettes = TRUE, dependencies = TRUE)
+library(dynocc)
 
 dir.create("configs")
 generate_config("mock_test", data_file = "data/mock_survey_data.csv",
@@ -54,7 +54,7 @@ result$evaluation$parameters # posterior summary: mean, sd, Rhat, effective size
 This needs `rjags`/`dclone` installed (plus a working JAGS binary) to actually
 fit the model — see [Setup](#setup) below for that. If you just want to see the
 whole thing run without installing JAGS yourself, `vignette("getting-started",
-package = "msomgom")` walks through this exact example already rendered.
+package = "dynocc")` walks through this exact example already rendered.
 
 ## Setup
 
@@ -91,13 +91,13 @@ xcode-select --install
 
 ```r
 # install.packages("devtools")
-devtools::install_github("chross22/msomgom", build_vignettes = TRUE, dependencies = TRUE)
+devtools::install_github("chross22/dynocc", build_vignettes = TRUE, dependencies = TRUE)
 ```
 
 **`build_vignettes = TRUE` is not the default** - `devtools`/`remotes` skip
 building vignettes unless asked (`remotes::install_github()`'s `build_opts`
 actually includes `--no-build-vignettes` by default), so
-`vignette("getting-started", package = "msomgom")` will say the vignette
+`vignette("getting-started", package = "dynocc")` will say the vignette
 doesn't exist if you install without it. `dependencies = TRUE` pulls in
 `knitr`/`rmarkdown`, needed to build it, since they're `Suggests`-only.
 
@@ -144,7 +144,7 @@ parsing uses `yaml` (Stephens & Simonov 2025); data cleaning uses `dplyr`
 Generate a config programmatically rather than hand-editing YAML:
 
 ```r
-library(msomgom)
+library(dynocc)
 generate_config(
   "my_run",
   data_file = "data/my_survey_data.csv",
@@ -154,7 +154,7 @@ generate_config(
 # -> writes configs/my_run.yaml (relative to the current working directory)
 ```
 
-Two example configs ship with the package under `system.file("extdata/configs", package = "msomgom")`:
+Two example configs ship with the package under `system.file("extdata/configs", package = "dynocc")`:
 `bof_riwh.yaml` reproduces the pipeline's original hardcoded Bay of Fundy / RIWH
 settings, and `mock_test.yaml` is a small/fast config for the mock-data smoke
 test below. See `?generate_config` for what every field means (paths,
@@ -171,7 +171,7 @@ for the codes that apply to your platform).
 ### Run the pipeline
 
 ```r
-library(msomgom)
+library(dynocc)
 result <- run_occupancy_model("configs/my_run.yaml")
 result$fit          # the fitted mcmc.list
 result$evaluation    # convergence diagnostics + posterior summary, see below
@@ -181,12 +181,12 @@ or from the command line, via the CLI wrapper installed with the package:
 
 ```r
 # run once to find where it lives on your machine:
-system.file("scripts/run_pipeline.R", package = "msomgom")
-#> "/usr/local/lib/R/site-library/msomgom/scripts/run_pipeline.R"
+system.file("scripts/run_pipeline.R", package = "dynocc")
+#> "/usr/local/lib/R/site-library/dynocc/scripts/run_pipeline.R"
 ```
 
 ```bash
-Rscript /usr/local/lib/R/site-library/msomgom/scripts/run_pipeline.R configs/my_run.yaml
+Rscript /usr/local/lib/R/site-library/dynocc/scripts/run_pipeline.R configs/my_run.yaml
 ```
 
 `run_occupancy_model()` calls, in order: `prep_survey_data()` (load + clean
@@ -201,7 +201,7 @@ The real NARWC survey CSV isn't included in this repo (see Data below). To
 exercise the whole pipeline with synthetic data:
 
 ```r
-library(msomgom)
+library(dynocc)
 generate_config("mock_test", data_file = "data/mock_survey_data.csv",
                  output_dir = "output/mock_test",
                  n_chains = 2, n_adapt = 100, n_burn = 100, n_iter = 200)
@@ -213,7 +213,7 @@ Mock data is grounded in the NARWC handbook's actual field codes (`PLATFORM`,
 `FILEID`, `LEGTYPE`, `LEGSTAGE`, `VISIBLTY`, `BEAUFORT`, `IDREL`, `SPECCODE`),
 including some decoy records the pipeline's filters should drop, so it's a real
 exercise of the filtering logic, not just a happy-path stub. See
-`vignette("getting-started", package = "msomgom")` for this same walkthrough,
+`vignette("getting-started", package = "dynocc")` for this same walkthrough,
 fully worked through and rendered.
 
 ### Going further
@@ -293,7 +293,7 @@ and skip `onedrive_filename` entirely.
 
 ## Repository layout
 
-`msomgom` is a standard R package; the layout follows the usual conventions
+`dynocc` is a standard R package; the layout follows the usual conventions
 (`R CMD build`/`devtools::check()` both pass clean):
 
 ```
@@ -308,12 +308,12 @@ R/
   data_prep.R                      # prep_survey_data(config) -> cleaned survey data
   jagsPrep.R                       # build_detection_arrays(...) -> spatial grid + detection arrays
   jags.R                           # fit_occupancy_model(...) -> fits the JAGS model
-  effect_estimates.R               # effect_estimates.msomgom_fit() -> fancyfx integration
+  effect_estimates.R               # effect_estimates.dynocc_fit() -> fancyfx integration
   evaluate_model.R                 # evaluate_occupancy_model(...) -> convergence diagnostics
   plot_diagnostics.R               # plot_survey_coverage/plot_sightings/plot_occupancy_map/plot_covariate_map
   cleanup.R                        # cleanup_outputs(config) -> removes data file/figs
   main.R                           # run_occupancy_model(config_path) -> orchestrates all of the above
-  msomgom-package.R                # package-level doc + centralized @import/@importFrom
+  dynocc-package.R                # package-level doc + centralized @import/@importFrom
 man/                               # generated .Rd files (roxygen2, do not edit by hand)
 vignettes/getting-started.Rmd      # worked end-to-end walkthrough on mock data
 tests/testthat/                    # testthat suite (unit tests + end-to-end pipeline tests)
@@ -336,10 +336,10 @@ docs/refactor_plan.md              # full history of the generalization refactor
 | [Getting started](vignettes/getting-started.Rmd) | one complete run on synthetic data, end to end |
 | [Diagnostics and covariates](vignettes/diagnostics.Rmd) | why a fit looks wrong, and how to attach environmental covariates |
 
-## Citing msomgom
+## Citing dynocc
 
 ```r
-citation("msomgom")
+citation("dynocc")
 ```
 
 That gives three entries: the package; the dynamic (multi-season,

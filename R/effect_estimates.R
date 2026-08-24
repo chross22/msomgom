@@ -2,11 +2,11 @@
 #'
 #' Implements [fancyfx::effect_estimates()] for a `fit_occupancy_model()`
 #' result, so [fancyfx::plotEffects()]/[fancyfx::plotSmooths()] work on a
-#' msomgom fit the same way they work on an `mgcv::gam` or any model
+#' dynocc fit the same way they work on an `mgcv::gam` or any model
 #' `marginaleffects` supports - without fancyfx needing to know anything about
-#' this package. `fancyfx` is a `Suggests`-only dependency of msomgom, not the
+#' this package. `fancyfx` is a `Suggests`-only dependency of dynocc, not the
 #' other way around: this method lives here because interpreting a bare
-#' `coda::mcmc.list` requires msomgom's own parameter-naming convention
+#' `coda::mcmc.list` requires dynocc's own parameter-naming convention
 #' (`mu.b.cov`, `mu.e.cov`, ...), which a generic plotting package has no way
 #' to know.
 #'
@@ -24,7 +24,7 @@
 #' multiple of its standard deviation), on the covariate's raw scale, so the
 #' curve lines up with a rug drawn from that same raw data.
 #'
-#' @param model an object from `fit_occupancy_model()` (class `msomgom_fit`)
+#' @param model an object from `fit_occupancy_model()` (class `dynocc_fit`)
 #' @param var name of the covariate whose effect to extract, as a string -
 #'   matching a name in `occ_covariates`/`config$covariates$psi/phi/gamma`
 #' @param scale `"auto"` (the default, resolves to `"link"`), `"link"` for the
@@ -34,12 +34,16 @@
 #'   other covariates on the same process held at their mean
 #' @param interval `"auto"` (the default, resolves to `"ci"`), `"ci"`/`"cri"`
 #'   for the posterior credible interval at `level`, or `"se"` for a `+/- 1`
-#'   posterior-SD band. `"auto"` resolves to `"ci"` because every msomgom fit
+#'   posterior-SD band. `"auto"` resolves to `"ci"` because every dynocc fit
 #'   is summarized from posterior draws, the same as fancyfx treats a `brms`/
 #'   `rstanarm` fit - there is no standard error to build a `"se"` ribbon from
 #'   independent of the posterior itself.
 #' @param level credible-interval level, used when `interval` is `"ci"`/`"cri"`
 #' @param n number of points at which to evaluate the effect
+#' @param data accepted and ignored, for signature compatibility with
+#'   [fancyfx::effect_estimates()] (whose `plotEffects()` always passes it): a
+#'   dynocc fit keeps the covariate data it was fit on, and the evaluation
+#'   range always comes from there, so a fallback range is never needed
 #' @param ... ignored; present so this matches [fancyfx::effect_estimates()]'s
 #'   signature
 #' @return a data.frame with columns `.x`, `.estimate`, `.lower`, `.upper`,
@@ -60,11 +64,12 @@
 #' fancyfx::plotEffects(fit, data.frame(sst = as.vector(sst_avg$sst)), "sst")
 #' }
 #' @exportS3Method fancyfx::effect_estimates
-effect_estimates.msomgom_fit <- function(model, var,
+effect_estimates.dynocc_fit <- function(model, var,
                                           scale = c("auto", "link", "response"),
                                           interval = c("auto", "se", "ci", "cri"),
                                           level = 0.95,
                                           n = 100,
+                                          data = NULL,
                                           ...) {
   scale <- match.arg(scale)
   interval <- match.arg(interval)
@@ -73,7 +78,7 @@ effect_estimates.msomgom_fit <- function(model, var,
     stop("level must be a single number strictly between 0 and 1, not: ", level)
   }
 
-  hit <- msomgom_covariate_lookup(model, var)
+  hit <- dynocc_covariate_lookup(model, var)
 
   z_mat <- as.matrix(model)
   intercept_col <- paste0("mu.", hit$prefix, ".0")
@@ -92,7 +97,7 @@ effect_estimates.msomgom_fit <- function(model, var,
          "coefficients; jags_params = \"Z\" only tracks occupancy states.")
   }
 
-  # Every msomgom fit is summarized from posterior draws, so "auto" behaves
+  # Every dynocc fit is summarized from posterior draws, so "auto" behaves
   # the way fancyfx treats a Bayesian (brms/rstanarm) fit: a credible
   # interval, not a +/- 1 SE ribbon built from something that isn't there.
   if (interval == "auto") interval <- "ci"
@@ -134,11 +139,11 @@ effect_estimates.msomgom_fit <- function(model, var,
 #'
 #' @param model an object from `fit_occupancy_model()`
 #' @param var covariate name
-#' @return one row of `attr(model, "msomgom_covariates")`
-#' @seealso [effect_estimates.msomgom_fit()], the only caller
+#' @return one row of `attr(model, "dynocc_covariates")`
+#' @seealso [effect_estimates.dynocc_fit()], the only caller
 #' @keywords internal
-msomgom_covariate_lookup <- function(model, var) {
-  meta <- attr(model, "msomgom_covariates")
+dynocc_covariate_lookup <- function(model, var) {
+  meta <- attr(model, "dynocc_covariates")
   if (is.null(meta) || nrow(meta) == 0) {
     stop("model has no covariate metadata; effect_estimates() only works on a fit from ",
          "fit_occupancy_model() that was run with occ_covariates (config$covariates$psi/phi/gamma).")

@@ -229,7 +229,7 @@ What changed structurally:
   (`run_occupancy_model()`, `prep_survey_data()`, `build_detection_arrays()`,
   `fit_occupancy_model()`, `evaluate_occupancy_model()`, `cleanup_outputs()`, etc.) with
   full roxygen2 documentation, `@export` where user-facing, and `@import`/`@importFrom`
-  centralized in `R/msomgom-package.R`.
+  centralized in `R/dynocc-package.R`.
 - `library()`/`require()` calls inside function bodies were removed — hard dependencies
   moved to `@import`/`@importFrom` (CRAN convention), and truly optional dependencies
   (`rjags`/`dclone` for fitting, `coda` for diagnostics, `terra`/`mapview`/`tmap`/`webshot`/
@@ -243,7 +243,7 @@ What changed structurally:
   Together these get `devtools::check()` to 0 errors/0 warnings/0 notes.
 - `configs/` moved to `inst/extdata/configs/`; the old `Rscript main.R config.yaml` CLI
   entry point became `inst/scripts/run_pipeline.R`, a thin wrapper around
-  `library(msomgom); run_occupancy_model(args[1])`.
+  `library(dynocc); run_occupancy_model(args[1])`.
 - Added `vignettes/getting-started.Rmd`, a fully executable walkthrough (config generation,
   mock data, fitting, evaluation, and an optional environmental-covariates section) —
   verified by actually rendering it with `rmarkdown::render()`, not just written to look
@@ -264,7 +264,7 @@ What changed structurally:
 rug of the raw data above it - across model classes, via an `effect_estimates(model, var)`
 S3 generic: `mgcv::gam` objects go through `gratia`, everything else through
 `marginaleffects::predictions()`. Neither backend can interpret a bare `coda::mcmc.list`,
-since interpreting one requires knowing msomgom's own parameter-naming convention
+since interpreting one requires knowing dynocc's own parameter-naming convention
 (`mu.b.cov`, `mu.e.cov`, ...) - there's no way to generically infer that from the samples
 alone.
 
@@ -273,21 +273,21 @@ but rejected it for two reasons: a bare `mcmc.list` isn't specific enough for a 
 generic method - any other package's JAGS/Stan/NIMBLE output is also an `mcmc.list` with a
 completely different parameter-naming scheme, so dispatching on that class alone would
 misinterpret them; and architecturally, dependencies should point from the narrow package to
-the general one (msomgom depending on `fancyfx`, as it already does on `datamatch`/`derivoce`),
+the general one (dynocc depending on `fancyfx`, as it already does on `datamatch`/`derivoce`),
 not the reverse - baking one narrow downstream package's naming convention into a general
 plotting utility is backwards coupling.
 
 The actual implementation: `fit_occupancy_model()` tags its return value with its own class
-(`c("msomgom_fit", "mcmc.list")`, so every existing `coda`-based use - `summary()`, `plot()`,
-`as.matrix()` - is unaffected) and attaches a `"msomgom_covariates"` attribute: one row per
+(`c("dynocc_fit", "mcmc.list")`, so every existing `coda`-based use - `summary()`, `plot()`,
+`as.matrix()` - is unaffected) and attaches a `"dynocc_covariates"` attribute: one row per
 configured covariate, recording which process/coefficient tracks it and the raw-scale
 mean/sd/min/max needed to convert between the standardized scale the model was fit on and the
-covariate's own units. `R/effect_estimates.R`'s `effect_estimates.msomgom_fit()` reads that
+covariate's own units. `R/effect_estimates.R`'s `effect_estimates.dynocc_fit()` reads that
 attribute and returns the exact 4-column (`.x`/`.estimate`/`.lower`/`.upper`) tidy frame
 `fancyfx` documents, registered via `@exportS3Method fancyfx::effect_estimates` - R's
 package-qualified S3 registration, which defers activation until `fancyfx` is actually loaded,
 so `fancyfx` stays `Suggests`-only with no load-time dependency either direction. Verified
-both ways: `library(msomgom)` alone loads cleanly with no `fancyfx` installed, and once
+both ways: `library(dynocc)` alone loads cleanly with no `fancyfx` installed, and once
 `fancyfx` is attached the method registers and `fancyfx::plotEffects()` runs end-to-end.
 
 One real bug caught while building this: `mu.b.cov` (etc.) is a JAGS vector node, so its

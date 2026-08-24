@@ -29,7 +29,7 @@ JAGS installation.
 result, without re-fitting:
 
 ```r
-library(msomgom)
+library(dynocc)
 config <- load_config("configs/my_run.yaml")
 evaluate_occupancy_model("output/RIWH.colext.RData", config = config)
 ```
@@ -39,6 +39,14 @@ sample size per parameter (with warnings for likely non-convergence or a noisy
 posterior), trace/density plots saved to `<output_dir>/mcmc_diagnostics.pdf`, and,
 when the model was run with `jags.params: Z`, a naive-vs-modeled occupancy
 comparison per year.
+
+`plot_convergence()` draws the same two diagnostics it warns about - one point
+per parameter, Rhat against effective sample size, thresholds marked, and the
+parameters outside them labeled by name:
+
+```r
+plot_convergence("output/RIWH.colext.RData")
+```
 
 # Debugging and assessing data/outputs
 
@@ -50,7 +58,7 @@ detections, a record that fell outside every configured season, or a
 covariate matrix with the wrong shape:
 
 ```r
-library(msomgom)
+library(dynocc)
 diagnose_pipeline("configs/my_run.yaml")
 # with covariates, checked against config$covariates$psi/phi/gamma too:
 diagnose_pipeline("configs/my_run.yaml", occ_covariates = list(sst = sst_avg$sst))
@@ -62,7 +70,7 @@ right where it stopped - e.g. `plot_survey_coverage(result$arrays)`.
 
 **When `diagnose_pipeline()` isn't enough** - a crash inside a pipeline stage
 itself, not just a suspicious-looking result - R's own debugging tools work
-on any msomgom function like they would on your own code:
+on any dynocc function like they would on your own code:
 
 - **`traceback()`** - run immediately after an error, before anything else,
   to print the exact call stack that led to it.
@@ -100,7 +108,7 @@ plotted (with the plotted column added) invisibly, so you can inspect the
 underlying values or hand them to `mapview()` for an interactive version.
 
 ```r
-library(msomgom)
+library(dynocc)
 config <- load_config("configs/my_run.yaml")
 prep <- prep_survey_data(config)
 arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
@@ -114,6 +122,12 @@ plot_survey_coverage(arrays, season = 3)              # one season only
 plot_sightings(arrays, "RIWH")
 plot_sightings(arrays, "RIWH", season = 3)
 
+# The likelihood's entire information content, one tile per site x season:
+# unsurveyed, surveyed-without-detection, or detected. A season that is
+# mostly unsurveyed will lean on the prior and the colonization/persistence
+# dynamics, not the data - better to know that before fitting.
+plot_detection_history(arrays, "RIWH")
+
 # After fitting with jags_params = "Z": posterior occupancy probability
 # per cell, spatially - the payoff visualization for an occupancy model.
 fit <- fit_occupancy_model(arrays, config)             # config$jags$params: "Z"
@@ -124,6 +138,19 @@ plot_occupancy_map(fit, arrays, year = 2)
 # much faster to catch here than after a fit quietly does nothing with it.
 sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 plot_covariate_map(sst_avg$sst, arrays, var_name = "sst")
+
+# What the fitted model believes, cell by cell. A colext fit tracks
+# coefficients rather than occupancy states, so there is no Z to map - but
+# wherever a process has covariates its probability varies spatially, and
+# this is that surface. Read the "sd" map beside it: a striking mean surface
+# over cells the posterior barely constrains is a prior in a costume.
+occ_covariates <- build_covariates(config, arrays$area_grid_sf)
+fit <- fit_occupancy_model(arrays, config, occ_covariates = occ_covariates)
+plot_process_map(fit, arrays, "psi", occ_covariates = occ_covariates)
+plot_process_map(fit, arrays, "gamma", occ_covariates = occ_covariates, stat = "sd")
+
+# and the numbers behind the map
+predict(fit, arrays, "phi", occ_covariates = occ_covariates)
 ```
 
 `plot_survey_coverage()`/`plot_sightings()` are built directly from the same
@@ -179,7 +206,7 @@ Whichever source you use, `average_covariates()` spatially averages onto this
 pipeline's hex grid and temporally averages over whatever windows you give it:
 
 ```r
-library(msomgom)
+library(dynocc)
 config <- load_config("configs/my_run.yaml")
 
 # area_grid_sf must come from build_detection_arrays(), so the covariate grid
@@ -212,7 +239,7 @@ sst_avg <- average_covariates(env_dat, arrays$area_grid_sf, windows)
 covariate list into `run_occupancy_model()`:
 
 ```r
-library(msomgom)
+library(dynocc)
 generate_config("my_run", covariates_psi = c("sst"), covariates_phi = c("sst"))
 # -> configs/my_run.yaml has covariates: { psi: [sst], phi: [sst], gamma: [] }
 
@@ -234,18 +261,18 @@ separate, larger follow-up.
 
 # Covariate effect plots (via fancyfx)
 
-A fit with covariates configured (above) is tagged `msomgom_fit` and carries
+A fit with covariates configured (above) is tagged `dynocc_fit` and carries
 the metadata needed to plot a covariate's fitted effect with
 [`fancyfx`](https://github.com/chross22/fancyfx) - the effect curve stacked
 above a rug of the raw covariate data, the same way `fancyfx` plots an
 `mgcv::gam`'s partial effects or any other model's predictions.
-`fancyfx` is optional (`Suggests`); msomgom depends on it, not the other way
-around - `effect_estimates.msomgom_fit()` is what makes `fancyfx` work here,
+`fancyfx` is optional (`Suggests`); dynocc depends on it, not the other way
+around - `effect_estimates.dynocc_fit()` is what makes `fancyfx` work here,
 not anything `fancyfx` itself knows about this package:
 
 ```r
 # install.packages("devtools"); devtools::install_github("chross22/fancyfx")
-library(msomgom)
+library(dynocc)
 library(fancyfx)
 
 fit <- fit_occupancy_model(arrays, config, occ_covariates = list(sst = sst_avg$sst))
@@ -262,7 +289,7 @@ plotEffects(fit, rug_dat, "sst", xlab = "SST")
 linear predictor, centered at zero at the covariate's mean - the occupancy
 equivalent of a GAM's partial effect. `scale = "response"` gives the full
 predicted occupancy probability as the covariate varies, with any other
-covariates on the same process held at their mean. Since every msomgom fit is
+covariates on the same process held at their mean. Since every dynocc fit is
 summarized from posterior draws, `interval` defaults to the credible interval
 (`"ci"`) rather than a `+/- 1 SE` band, the same way `fancyfx` treats a
 `brms`/`rstanarm` fit. Requires a `jags_params = "colext"` fit (the default) -

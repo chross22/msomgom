@@ -1,4 +1,4 @@
-# Project-specific citation checks for msomgom.
+# Project-specific citation checks for dynocc.
 #
 # The generic engine is fetched from chross22/distsamp at run time. Anything
 # that knows something about *this* repository lives here.

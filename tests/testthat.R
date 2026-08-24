@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(msomgom)
+library(dynocc)
 
-test_check("msomgom")
+test_check("dynocc")

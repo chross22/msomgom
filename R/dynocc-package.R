@@ -1,7 +1,7 @@
-#' msomgom: Multi-Season Occupancy Model of the Gulf of Maine
+#' dynocc: Multi-Season Occupancy Model of the Gulf of Maine
 #'
 #' See the package README for a full walkthrough, or
-#' `vignette("getting-started", package = "msomgom")`.
+#' `vignette("getting-started", package = "dynocc")`.
 #'
 #' @keywords internal
 #' @import dplyr

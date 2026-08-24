@@ -84,3 +84,69 @@ test_that("vars defaults to every non-YEAR/MONTH/DAY/geometry column", {
   result <- average_covariates(env_dat, grid, windows)
   expect_setequal(names(result), c("sst", "chl"))
 })
+
+test_that("datamatch provenance columns are excluded from the default vars", {
+  grid <- make_test_grid()
+  env_dat <- make_test_env_dat()
+  # what accessCopernicus() (datamatch >= 0.2.0) sends along with the values
+  env_dat$sst_source <- "glorys"
+  env_dat$sst_depth <- 0.49
+  env_dat$.datamatch_source <- "copernicus"
+  env_dat$HOUR <- 0
+  windows <- data.frame(start_date = as.Date("2020-01-01"), end_date = as.Date("2020-01-31"), label = "jan")
+
+  result <- average_covariates(env_dat, grid, windows)
+
+  expect_named(result, "sst")
+  expect_equal(unname(result$sst[1, 1]), mean(c(10, 20)))
+})
+
+test_that("a covariate that merely ends in _depth is kept", {
+  grid <- make_test_grid()
+  env_dat <- make_test_env_dat()
+  env_dat$mixed_layer_depth <- 30 # no 'mixed_layer' column, so a real covariate
+  windows <- data.frame(start_date = as.Date("2020-01-01"), end_date = as.Date("2020-01-31"), label = "jan")
+
+  result <- average_covariates(env_dat, grid, windows)
+
+  expect_named(result, c("sst", "mixed_layer_depth"))
+})
+
+test_that("an unrecognized non-numeric column is skipped with a message, not averaged to NA", {
+  grid <- make_test_grid()
+  env_dat <- make_test_env_dat()
+  env_dat$platform <- "vessel"
+  windows <- data.frame(start_date = as.Date("2020-01-01"), end_date = as.Date("2020-01-31"), label = "jan")
+
+  expect_message(result <- average_covariates(env_dat, grid, windows), "platform")
+  expect_named(result, "sst")
+})
+
+test_that("explicitly naming a non-numeric var errors instead of warning NA", {
+  grid <- make_test_grid()
+  env_dat <- make_test_env_dat()
+  env_dat$sst_source <- "glorys"
+  windows <- data.frame(start_date = as.Date("2020-01-01"), end_date = as.Date("2020-01-31"), label = "jan")
+
+  expect_error(average_covariates(env_dat, grid, windows, vars = "sst_source"), "non-numeric")
+})
+
+test_that("explicitly naming a missing var errors with the columns that exist", {
+  grid <- make_test_grid()
+  env_dat <- make_test_env_dat()
+  windows <- data.frame(start_date = as.Date("2020-01-01"), end_date = as.Date("2020-01-31"), label = "jan")
+
+  expect_error(average_covariates(env_dat, grid, windows, vars = "chl"), "not found.*sst")
+})
+
+test_that("an env_dat of nothing but provenance errors rather than returning empty", {
+  grid <- make_test_grid()
+  env_dat <- make_test_env_dat()
+  env_dat$sst_source <- "glorys"
+  env_dat$sst <- NULL
+  # sst gone, so sst_source no longer has its base var - but it's character,
+  # so the non-numeric skip catches it and nothing is left
+  windows <- data.frame(start_date = as.Date("2020-01-01"), end_date = as.Date("2020-01-31"), label = "jan")
+
+  expect_error(suppressMessages(average_covariates(env_dat, grid, windows)), "No averageable")
+})

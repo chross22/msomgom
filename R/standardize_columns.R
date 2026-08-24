@@ -1,4 +1,4 @@
-# msomgom does not keep its own copy of the NARWC vocabulary. narwcr
+# dynocc does not keep its own copy of the NARWC vocabulary. narwcr
 # (chross22/narwcr) is the data-preparation layer for this archive, and
 # `standardize_survey_columns()` runs `narwcr::standardize_narwc_columns()`
 # first: the alias table, the `Trk*` GPS-track preferred sources, the alias

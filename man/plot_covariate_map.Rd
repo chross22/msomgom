@@ -55,7 +55,10 @@ plot_covariate_map(sst_avg$sst, arrays, window = 3, var_name = "sst")
 \code{\link[=plot_sightings]{plot_sightings()}}, \code{\link[=plot_occupancy_map]{plot_occupancy_map()}}
 
 Other diagnostic plots:
+\code{\link[=plot_convergence]{plot_convergence()}},
+\code{\link[=plot_detection_history]{plot_detection_history()}},
 \code{\link[=plot_occupancy_map]{plot_occupancy_map()}},
+\code{\link[=plot_process_map]{plot_process_map()}},
 \code{\link[=plot_sightings]{plot_sightings()}},
 \code{\link[=plot_survey_coverage]{plot_survey_coverage()}}
 }
