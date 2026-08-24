@@ -22,4 +22,8 @@ the config's date range and study-area polygon unless the recipe set them
 explicitly. Anything the function doesn't have a formal for is left out, so
 this works across access functions with different signatures.
 }
+\seealso{
+\code{\link[=build_covariates]{build_covariates()}}, which calls this for both source and derive
+steps; \code{datamatch::fetch_bathymetry()}, the source of an implied \code{bathy}
+}
 \keyword{internal}

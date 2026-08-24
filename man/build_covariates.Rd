@@ -42,11 +42,13 @@ the function rather than choosing from a fixed menu here:
       fn: accessCopernicus      # any datamatch access function
       args:
         vars: [SST, UO, VO]     # years/months/bounding_box are implied
-      derive:                   # any number of derivoce functions, in order
+      derive:                   # any number of derive functions, in order
         - fn: horizontal_gradient
           args: \{vars: SST\}     # adds SST_grad
         - fn: eke               # adds EKE from UO/VO
         - fn: distance_to_shore # adds shore_dist
+        - fn: attach_bathymetry # adds DEPTH; the raster is fetched for
+          args: \{vars: DEPTH\}   #   the study area, not named in the config
 }\if{html}{\out{</div>}}
 
 A recipe is a \emph{pipeline}, not a single covariate: one recipe can produce

@@ -165,3 +165,28 @@ test_that("a source with no fn names the recipe that is missing it", {
   expect_error(run_covariate_recipe(list(args = list()), config, name = "ocean"),
                "'ocean' has no `fn`")
 })
+
+test_that("a derive step taking `bathy` has one fetched for the study area", {
+  config <- make_covariate_config()
+  fetched <- NULL
+  # the injection must be lazy: a function with no `bathy` formal must not
+  # trigger a bathymetry download at all
+  testthat::local_mocked_bindings(
+    study_area_bbox = function(cfg) list(xmin = 0, xmax = 2, ymin = 0, ymax = 1)
+  )
+
+  no_bathy <- function(env_dat, vars = NULL) NULL
+  args <- fill_covariate_args(no_bathy, list(vars = "SST"), config)
+  expect_named(args, "vars")
+  expect_false("bathy" %in% names(args))
+})
+
+test_that("a derive step's arguments are filled and typo-checked like a source's", {
+  config <- make_covariate_config()
+  fn <- function(env_dat, vars = NULL, bounding_box = NULL) NULL
+
+  args <- fill_covariate_args(fn, list(vars = "DEPTH"), config)
+  expect_equal(args$bounding_box, list(xmin = 0, xmax = 2, ymin = 0, ymax = 1))
+
+  expect_error(fill_covariate_args(fn, list(varz = "DEPTH"), config), "varz")
+})

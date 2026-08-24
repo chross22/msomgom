@@ -60,18 +60,27 @@ resolve_covariate_fn <- function(fn, what = "source") {
 #' @param args the recipe's own `args`, which always win
 #' @param config a config list, as returned by `load_config()`
 #' @return the full argument list to call `fn` with
+#' @seealso [build_covariates()], which calls this for both source and derive
+#'   steps; `datamatch::fetch_bathymetry()`, the source of an implied `bathy`
 #' @keywords internal
 fill_covariate_args <- function(fn, args, config) {
   args <- args %||% list()
   formals_names <- names(formals(fn))
 
+  # Each entry is a thunk, so nothing is computed unless the function being
+  # called actually takes it - `bathy` costs a download.
   implied <- list(
-    years = config$dates$beg_year:config$dates$end_year,
-    months = config$dates$beg_month:config$dates$end_month,
-    bounding_box = study_area_bbox(config)
+    years = function() config$dates$beg_year:config$dates$end_year,
+    months = function() config$dates$beg_month:config$dates$end_month,
+    bounding_box = function() study_area_bbox(config),
+    # A bathymetry raster is not something a YAML file can hold, so a step
+    # that needs one - attach_bathymetry(), which is how DEPTH and SLOPE get
+    # into a covariate table - has it fetched for the study area. Same
+    # principle as bounding_box: the config already says which bathymetry.
+    bathy = function() datamatch::fetch_bathymetry(study_area_bbox(config))
   )
   for (nm in names(implied)) {
-    if (nm %in% formals_names && is.null(args[[nm]])) args[[nm]] <- implied[[nm]]
+    if (nm %in% formals_names && is.null(args[[nm]])) args[[nm]] <- implied[[nm]]()
   }
 
   unknown <- setdiff(names(args), formals_names)
@@ -128,14 +137,10 @@ run_covariate_recipe <- function(recipe, config, name = "<unnamed>") {
            call. = FALSE)
     }
     derive_fn <- resolve_covariate_fn(step$fn, "derive")
-    args <- step$args %||% list()
-    unknown <- setdiff(names(args), names(formals(derive_fn)))
-    if (length(unknown) && !("..." %in% names(formals(derive_fn)))) {
-      stop("argument(s) ", paste(unknown, collapse = ", "), " were given to ",
-           step$fn, "(), which takes: ",
-           paste(setdiff(names(formals(derive_fn)), "..."), collapse = ", "),
-           ".", call. = FALSE)
-    }
+    # Same filling and same typo-checking as a source function: a derive step
+    # that takes `bathy` gets one fetched for the study area, and a misspelled
+    # argument is refused rather than silently ignored.
+    args <- fill_covariate_args(derive_fn, step$args, config)
     env_dat <- do.call(derive_fn, c(list(env_dat), args))
   }
   env_dat
@@ -163,11 +168,13 @@ run_covariate_recipe <- function(recipe, config, name = "<unnamed>") {
 #'       fn: accessCopernicus      # any datamatch access function
 #'       args:
 #'         vars: [SST, UO, VO]     # years/months/bounding_box are implied
-#'       derive:                   # any number of derivoce functions, in order
+#'       derive:                   # any number of derive functions, in order
 #'         - fn: horizontal_gradient
 #'           args: {vars: SST}     # adds SST_grad
 #'         - fn: eke               # adds EKE from UO/VO
 #'         - fn: distance_to_shore # adds shore_dist
+#'         - fn: attach_bathymetry # adds DEPTH; the raster is fetched for
+#'           args: {vars: DEPTH}   #   the study area, not named in the config
 #' ```
 #'
 #' A recipe is a *pipeline*, not a single covariate: one recipe can produce

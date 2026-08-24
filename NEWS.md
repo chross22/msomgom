@@ -1,5 +1,12 @@
 # dynocc (development version)
 
+* A covariate recipe's derive steps are now filled and typo-checked exactly
+  like its source function, which makes bathymetry reachable from a config:
+  a step taking `bathy` - `datamatch::attach_bathymetry()`, the way `DEPTH`
+  and `SLOPE` become covariates - has one fetched for the study area, since a
+  bathymetry raster is not something a YAML file can hold. Filling is lazy,
+  so a recipe that never asks for bathymetry never downloads any.
+
 * A flat process map now says on the figure why it is flat. With no
   covariate on a process, `plot_process_map()` draws the intercept in every
   cell - correctly, since there is no spatial term - and a one-colour hex
