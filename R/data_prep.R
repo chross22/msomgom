@@ -219,9 +219,19 @@ prep_survey_data <- function(config, verbose = FALSE) {
   dat <- dat |>
     filter(YEAR_ET >= config$dates$beg_year & YEAR_ET <= config$dates$end_year)
   say(nrow(dat), " remain after filtering to years ", config$dates$beg_year, "-", config$dates$end_year)
+  # A month RANGE, inclusive - this used to be equality against the two
+  # endpoints, which is indistinguishable from a range when they are adjacent
+  # (the original Aug/Sep analysis) and silently drops every month in between
+  # otherwise: beg 1 / end 12 kept January and December and discarded the
+  # other ten. beg > end wraps around the new year, so 11/2 means Nov-Feb.
+  keep_months <- if (config$dates$beg_month <= config$dates$end_month) {
+    config$dates$beg_month:config$dates$end_month
+  } else {
+    c(config$dates$beg_month:12, 1:config$dates$end_month)
+  }
   dat <- dat |>
-    filter(MONTH_ET == config$dates$beg_month | MONTH_ET == config$dates$end_month)
-  say(nrow(dat), " remain after filtering to months ", config$dates$beg_month, "/", config$dates$end_month)
+    filter(MONTH_ET %in% keep_months)
+  say(nrow(dat), " remain after filtering to months ", config$dates$beg_month, "-", config$dates$end_month)
 
   # Optionally rewrite FILEID into a per-survey identifier, for data that
   # doesn't use FILEID as a survey identifier at all - an export where every

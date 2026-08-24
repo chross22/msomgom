@@ -1,5 +1,25 @@
 # dynocc (development version)
 
+* **The month filter is a range, and it can wrap the year.** It used to be
+  equality against the two endpoints - indistinguishable from a range when
+  they are adjacent, which the original Aug/Sep analysis's were, and silently
+  wrong otherwise: `beg_month: 1, end_month: 12` kept January and December
+  and discarded the other ten months. It now keeps every month from
+  `beg_month` through `end_month`, and `beg_month > end_month` wraps around
+  the new year (11/2 means Nov-Feb). `generate_mock_data()` had the same
+  endpoint-only habit and now places surveys in every configured season
+  instead, so a fixture season the config declares is no longer invisibly
+  empty.
+
+* **A season nothing surveyed builds as unobserved instead of crashing.**
+  `build_detection_arrays()` ran its survey loop as `1:0` when a season had
+  zero surveys, and the NA FILEID that indexed out surfaced as a baffling
+  "FILEID 'NA' spans 0 calendar days" error. A zero-survey season now gets a
+  zero `reps` row and NA arrays - unobserved, which is what it is - and the
+  per-season survey counts are reported as messages. The leftover debug
+  `print()` calls that dumped whole vectors to the console went in the same
+  pass.
+
 * **Any datamatch or derivoce covariate can now go into the model.**
   `build_covariates()` runs the whole covariate stage from the config alone:
   each entry under `covariates.sources` is a pipeline that names a datamatch

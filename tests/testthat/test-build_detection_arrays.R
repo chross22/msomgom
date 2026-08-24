@@ -108,3 +108,23 @@ test_that("records that all fall off-effort are refused by name", {
   expect_error(build_detection_arrays(off, res$prep$season_info, res$config),
                "none are on-effort")
 })
+
+test_that("a season nothing surveyed builds as unobserved, not as a crash", {
+  # The 1:0 bug: a season with zero surveys ran the survey loop with j = 1 on
+  # an empty season_ufids, and the NA FILEID it indexed out surfaced as
+  # "FILEID 'NA' spans 0 calendar days".
+  res <- make_prep()
+  tmp <- res$prep$tmpdat[res$prep$tmpdat$season != 1, , drop = FALSE]
+
+  expect_message(
+    arrays <- build_detection_arrays(tmp, res$prep$season_info, res$config),
+    "season 1: 0 survey"
+  )
+  expect_equal(unname(arrays$reps[1, ]), rep(0, arrays$num_cells))
+  expect_true(any(arrays$reps[2, ] > 0)) # the surveyed season is untouched
+
+  # and the season reads as unsurveyed downstream, not as detections of zero
+  pdf(NULL); on.exit(dev.off())
+  state <- plot_detection_history(arrays, res$config$species$active)
+  expect_true(all(is.na(state[, 1])))
+})

@@ -311,3 +311,54 @@ test_that("describe_legtypes copes with an empty or unknown LEGTYPE", {
   expect_match(describe_legtypes(c(NA, NA), 2), "LEGTYPE is empty")
   expect_match(describe_legtypes(c(42, 42), 42), "not a NARWC LEGTYPE code")
 })
+
+test_that("the month filter keeps the months BETWEEN the endpoints", {
+  # It used to be equality against the two endpoints - indistinguishable from
+  # a range when they're adjacent (the original Aug/Sep analysis), silently
+  # wrong otherwise: beg 7 / end 9 dropped every August record.
+  configs_dir <- withr::local_tempdir()
+  project_dir <- withr::local_tempdir()
+  path <- generate_config(
+    "month_range", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/mock.csv",
+    beg_year = 2018, end_year = 2018, beg_month = 7, end_month = 9,
+    # all three months as seasons, so the mock generator puts surveys in
+    # August - the month the equality filter would have dropped
+    seasons = list(
+      list(begin = c(7, 1), end = c(7, 31)),
+      list(begin = c(8, 1), end = c(8, 31)),
+      list(begin = c(9, 1), end = c(9, 30))
+    )
+  )
+  generate_mock_data(path, surveys_per_season = 2, points_per_survey = 6, seed = 11)
+  config <- load_config(path)
+
+  prep <- prep_survey_data(config)
+
+  months_present <- sort(unique(as.numeric(format(prep$tmpdat$date_ymd, "%m"))))
+  expect_true(8 %in% months_present) # the month strictly between the endpoints
+})
+
+test_that("beg_month > end_month wraps around the new year", {
+  configs_dir <- withr::local_tempdir()
+  project_dir <- withr::local_tempdir()
+  path <- generate_config(
+    "month_wrap", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/mock.csv",
+    beg_year = 2018, end_year = 2018, beg_month = 11, end_month = 2,
+    seasons = list(
+      list(begin = c(1, 1), end = c(1, 31)),
+      list(begin = c(2, 1), end = c(2, 28)),
+      list(begin = c(11, 1), end = c(11, 30)),
+      list(begin = c(12, 1), end = c(12, 31))
+    )
+  )
+  generate_mock_data(path, surveys_per_season = 2, points_per_survey = 6, seed = 12)
+  config <- load_config(path)
+
+  prep <- prep_survey_data(config)
+
+  months_present <- sort(unique(as.numeric(format(prep$tmpdat$date_ymd, "%m"))))
+  expect_true(all(months_present %in% c(11, 12, 1, 2)))
+  expect_true(length(months_present) >= 2) # both sides of the year boundary
+})

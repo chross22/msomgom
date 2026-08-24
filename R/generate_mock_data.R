@@ -74,7 +74,14 @@ generate_mock_data <- function(config_path, out_path = NULL,
   lat_range <- range(poly[, 2])
 
   years <- raw$dates$beg_year:raw$dates$end_year
-  months <- unique(c(raw$dates$beg_month, raw$dates$end_month))
+  # One batch of surveys per configured SEASON, which is what
+  # `surveys_per_season` has claimed all along. This used to take the two
+  # month endpoints instead - right for the original Aug/Sep config, where
+  # the endpoints and the seasons coincide, and wrong for any other: a
+  # Jul-Sep config got no August surveys at all, so a season the config
+  # declared was invisibly empty in the fixture.
+  months <- vapply(raw$seasons, function(sn) as.integer(sn$begin[[1]]), integer(1))
+  months <- unique(months)
   target_species <- unlist(raw$species$codes)
   decoy_species_pool <- setdiff(c("HUWH", "FIWH", "MIWH", "HAPO"), target_species)
   if (length(decoy_species_pool) == 0) decoy_species_pool <- "HAPO"

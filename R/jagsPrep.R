@@ -111,7 +111,6 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
   area_grid_sf <- area_grid_sf |>
     mutate(grid_id = seq_along(lengths(area_grid)))
   num_cells <- dim(area_grid_sf)[1]
-  print(num_cells)
   rm(area_grid)
 
   tmpdat_sf$grid_id <- NA
@@ -129,14 +128,10 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
   }
   rm(tmpdat_sf_ssn, i)
   max_survs <- max(num_survs[, 2])
-  print(num_survs)
-  print(max_survs)
 
   ## CREATE ARRAYS TO HOLD SPECIES DETECTION HISTORIES & DETECTION COVARIATE ARRAYS FOR JAGS MODELLING
-  print(num_spp)
   spp3d <- array(dim = c(num_cells, max_survs + 1, num_ssn))
   for (j in 1:num_spp) {
-    print(spp[j])
     cmd <- paste(spp[j], "3d = spp3d", sep = "")
     eval(parse(text = cmd))
   }
@@ -152,7 +147,20 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
     tmpdat_sf_season <- tmpdat_sf |> filter(season == i)
     season_ufids <- unique(tmpdat_sf_season$FILEID)
     num_season_ufids <- length(season_ufids)
-    print(num_season_ufids)
+    message("season ", i, ": ", num_season_ufids, " survey(s)")
+
+    # A season nothing surveyed is data, not an error: its arrays stay NA,
+    # its reps row is zero, and the model treats it as unobserved. It used
+    # to crash here instead - `1:0` runs the survey loop with j = 1 on an
+    # empty season_ufids, and the NA FILEID that indexes out surfaced as a
+    # baffling "FILEID 'NA' spans 0 calendar days".
+    if (num_season_ufids == 0) {
+      reps[i, ] <- 0
+      effort3d[, 1, i] <- area_grid_sf$grid_id
+      jday3d[, 1, i] <- area_grid_sf$grid_id
+      bft3d[, 1, i] <- area_grid_sf$grid_id
+      next
+    }
 
     effort <- area_grid_sf
     jday <- area_grid_sf
@@ -161,7 +169,7 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
     jday[, 3:(max_survs + 2)] <- NA
     bft[, 3:(max_survs + 2)] <- NA
 
-    for (j in 1:num_season_ufids) {
+    for (j in seq_len(num_season_ufids)) {
       cmd <- paste("tmpdat_sf_season_survey = tmpdat_sf_season |> filter(FILEID == '", season_ufids[j], "')", sep = "")
       eval(parse(text = cmd))
 
@@ -248,7 +256,6 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
     repeatVisits[is.na(repeatVisits)] <- 0
     repeatVisits[repeatVisits > 0] <- 1
     repeatVisits <- rowSums(repeatVisits)
-    print(repeatVisits)
     reps[i, ] <- repeatVisits
 
     effort3d[, , i] <- as.matrix(st_drop_geometry(effort))
@@ -257,8 +264,6 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
     rm(effort, jday, bft)
 
     for (j in 1:num_spp) {
-      print(spp[j])
-
       cmd <- paste(spp[j], "_season = tmpdat_sf_season |> filter(SPECCODE == '", spp[j], "')", sep = "")
       eval(parse(text = cmd))
 
@@ -268,7 +273,7 @@ build_detection_arrays <- function(tmpdat, season_info, config) {
       cmd <- paste(spp[j], "_ssn", i, "_grid_sf[,3:(max_survs+2)] = NA", sep = "")
       eval(parse(text = cmd))
 
-      for (k in 1:num_season_ufids) {
+      for (k in seq_len(num_season_ufids)) {
         cmd <- paste(spp[j], "_season_survey = ", spp[j], "_season |> filter(FILEID == '", season_ufids[k], "')", sep = "")
         eval(parse(text = cmd))
 
