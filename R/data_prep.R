@@ -301,6 +301,7 @@ prep_survey_data <- function(config, verbose = FALSE) {
   # (8.A.20), so it isn't platform-specific and stays fixed.
   on_effort_legtypes <- unlist(config$survey$on_effort_legtypes)
   if (is.null(on_effort_legtypes)) on_effort_legtypes <- c(5, 6)
+  say(describe_legtypes(dat$LEGTYPE, on_effort_legtypes))
 
   dat <- dat |>
     mutate(on.off.eff = if_else((BEAUFORT <= 6 & # normally require sea state 0-3, but sea state will be covariate on detection in this model
@@ -316,9 +317,8 @@ prep_survey_data <- function(config, verbose = FALSE) {
   say(n_on_effort, " of ", nrow(dat), " records are on-effort")
   if (nrow(dat) > 0 && n_on_effort == 0) {
     warning("No on-effort records after the LEGTYPE/LEGSTAGE/VISIBLTY/IDREL/BEAUFORT ",
-            "filter - the model has no detection opportunities to fit on. Check ",
-            "survey.on_effort_legtypes against what's actually in the data (see ",
-            "?generate_config), especially if this is a non-vessel survey platform.",
+            "filter - the model has no detection opportunities to fit on.\n",
+            describe_legtypes(dat$LEGTYPE, on_effort_legtypes),
             call. = FALSE)
   }
 
@@ -389,4 +389,50 @@ parse_survey_time <- function(x) {
     }, numeric(1))
   }
   out
+}
+
+#' Say what the LEGTYPE codes in the data mean, and what was asked for
+#'
+#' `survey.on_effort_legtypes` is a set of NARWC codes, and getting it wrong
+#' empties the data with nothing on screen to say which codes were there
+#' instead. The vocabulary is narwcr's (Handbook 8.A.21), so this reports the
+#' codes actually present with their meanings rather than making the reader
+#' look them up - the default `c(5, 6)` is POP *ship*, and a line-transect
+#' aerial survey uses 0-4, of which only 2 is the survey line.
+#'
+#' @param legtype the data's `LEGTYPE` column
+#' @param wanted the configured on-effort codes
+#' @return a single string, ready to pass to `say()` or a warning
+#' @seealso [prep_survey_data()], which calls this; `narwcr::narwc_codes()`,
+#'   which owns the code book
+#' @keywords internal
+describe_legtypes <- function(legtype, wanted) {
+  present <- sort(unique(stats::na.omit(legtype)))
+  if (!length(present)) return("LEGTYPE is empty, so no record can be on-effort.")
+
+  book <- tryCatch(narwcr::narwc_codes("LEGTYPE"), error = function(e) NULL)
+  label <- function(code) {
+    # `book` is a named character vector, and x[["absent"]] on one is an
+    # error rather than NULL - a code the handbook does not list would
+    # otherwise take down the very message meant to explain it.
+    key <- as.character(code)
+    meaning <- if (!is.null(book) && key %in% names(book)) book[[key]] else NULL
+    counts <- sum(legtype == code, na.rm = TRUE)
+    paste0("    ", code, if (code %in% wanted) " *" else "  ", "  ",
+           format(counts, big.mark = ","), "  ",
+           if (is.null(meaning)) "(not a NARWC LEGTYPE code)" else meaning)
+  }
+
+  matched <- sum(legtype %in% wanted, na.rm = TRUE)
+  paste0(
+    "  LEGTYPE codes in the data (* = configured as on-effort; ",
+    format(matched, big.mark = ","), " record(s) matched):\n",
+    paste(vapply(present, label, character(1)), collapse = "\n"),
+    if (!matched) paste0(
+      "\n  Nothing matched survey.on_effort_legtypes = ",
+      paste(wanted, collapse = ", "),
+      ". Codes 0-4 are line-transect aerial and only 2 is the survey line;",
+      "\n  5/6 are POP ship, 7/9 POP aerial. See narwcr::narwc_codes(\"LEGTYPE\")."
+    ) else ""
+  )
 }

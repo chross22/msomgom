@@ -285,3 +285,29 @@ test_that("a numeric column emptied by the read warns instead of arriving as NA"
 
   expect_warning(prep_survey_data(config), "entirely NA after being read as numbers")
 })
+
+test_that("describe_legtypes names the codes present and what they mean", {
+  lt <- c(rep(2, 5), rep(1, 3), rep(4, 2))
+
+  msg <- describe_legtypes(lt, 2)
+  expect_match(msg, "survey line")            # narwcr's meaning for code 2
+  expect_match(msg, "transit")                # and for code 1
+  expect_match(msg, "2 \\*")                  # the configured code is starred
+  expect_match(msg, "5 record\\(s\\) matched")
+})
+
+test_that("describe_legtypes says what to do when nothing matched", {
+  # the real failure: line-transect aerial data against the POP-ship default
+  lt <- c(rep(2, 5), rep(1, 3))
+
+  msg <- describe_legtypes(lt, c(5, 6))
+  expect_match(msg, "0 record\\(s\\) matched")
+  expect_match(msg, "Nothing matched")
+  expect_match(msg, "only 2 is the survey line")
+  expect_match(msg, "narwc_codes")
+})
+
+test_that("describe_legtypes copes with an empty or unknown LEGTYPE", {
+  expect_match(describe_legtypes(c(NA, NA), 2), "LEGTYPE is empty")
+  expect_match(describe_legtypes(c(42, 42), 42), "not a NARWC LEGTYPE code")
+})
