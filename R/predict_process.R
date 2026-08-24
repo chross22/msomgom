@@ -127,6 +127,10 @@ predict.dynocc_fit <- function(object, arrays, process = c("psi", "phi", "gamma"
   attr(out, "process") <- process
   attr(out, "season") <- season
   attr(out, "level") <- level
+  # What made the surface vary, if anything. A caller (plot_process_map())
+  # needs to tell "flat because intercept-only" from "flat because the
+  # covariate happens to be constant" - and to say which on the figure.
+  attr(out, "covariates") <- if (is.null(meta) || !nrow(meta)) character(0) else meta$name
   out
 }
 
@@ -181,11 +185,19 @@ plot_process_map <- function(fit, arrays, process = c("psi", "phi", "gamma"),
   grid$lower <- pred$lower
   grid$upper <- pred$upper
 
+  covariates <- attr(pred, "covariates")
   if (is.null(main)) {
     label <- c(psi = "Initial occupancy (psi)", phi = "Persistence (phi)",
                gamma = "Colonization (gamma)")[[process]]
     main <- paste0(label, ", posterior ", stat,
                    " (season ", attr(pred, "season"), ")")
+    # A figure outlives the console it was drawn in, so the reason a map has
+    # one colour belongs on the map. Intercept-only is not a failure and not
+    # a rendering fault - there is no spatial term, so every cell is equal.
+    if (!length(covariates)) {
+      main <- paste0(main, "\nintercept only: no covariate on ", process,
+                     ", so every cell is identical")
+    }
   }
   plot(grid[stat], main = main, ...)
   invisible(grid)

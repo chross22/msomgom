@@ -296,3 +296,28 @@ test_that("plot_occupancy_map stat = 'sd' maps the posterior SD of Z", {
   grid <- plot_occupancy_map(fit, arrays, season = 1, stat = "sd")
   expect_equal(grid$occupancy, unname(apply(rbind(m, m), 2, sd)))
 })
+
+test_that("predict() records which covariates drove the surface", {
+  local_null_device()
+  res <- make_arrays()
+  fit <- make_fake_colext_fit()
+  sst <- matrix(12, nrow = res$arrays$num_cells, ncol = res$arrays$num_ssn)
+
+  with_cov <- predict(fit, res$arrays, "psi", occ_covariates = list(sst = sst))
+  expect_equal(attr(with_cov, "covariates"), "sst")
+
+  flat <- suppressMessages(predict(fit, res$arrays, "phi"))
+  expect_length(attr(flat, "covariates"), 0)
+})
+
+test_that("an intercept-only process map is constant, and says so out loud", {
+  local_null_device()
+  res <- make_arrays()
+  fit <- make_fake_colext_fit()
+
+  # the message is the explanation for a one-colour map, so it has to fire
+  expect_message(grid <- plot_process_map(fit, res$arrays, "gamma"),
+                 "spatially flat")
+  # and the map really is constant - nothing is being rendered wrong
+  expect_equal(length(unique(round(grid$mean, 12))), 1)
+})

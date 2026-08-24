@@ -1,5 +1,14 @@
 # dynocc (development version)
 
+* A flat process map now says on the figure why it is flat. With no
+  covariate on a process, `plot_process_map()` draws the intercept in every
+  cell - correctly, since there is no spatial term - and a one-colour hex
+  grid reads as a rendering fault rather than as the answer. The title now
+  carries "intercept only: no covariate on <process>, so every cell is
+  identical", and `predict.dynocc_fit()` records the covariates behind a
+  surface in a `"covariates"` attribute, so a caller can tell an
+  intercept-only surface from one whose covariate happens to be constant.
+
 * **The colonization/persistence dynamics now actually engage.** The
   season/year structure was hardcoded to one season per "year", so the model
   treated every season as an independent year, the transition loop
