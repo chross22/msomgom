@@ -14,7 +14,9 @@ compare_naive_vs_modeled_occupancy(fit, arrays, config)
 \item{config}{a config list, as returned by \code{load_config()}}
 }
 \value{
-data.frame with columns \code{year}, \code{n_sites}, \code{naive_psi}, \code{modeled_psi}
+data.frame with one row per absolute season: columns \code{season},
+\code{year}, \code{n_sites}, \code{naive_psi}, \code{modeled_psi}. A season nothing surveyed
+has \code{n_sites} 0 and \code{naive_psi} NA
 }
 \description{
 Naive occupancy (proportion of sites with >=1 detection, ignoring

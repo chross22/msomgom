@@ -34,10 +34,15 @@ persistence (\code{phi}), and colonization (\code{gamma}) - config-driven, and e
 process independently gets zero or more covariates, fed by
 \code{average_covariates.R}'s per-site/per-season/year arrays.
 
-The "each array slice along the 3rd dimension is treated as its own year,
-with numseasons fixed at 1" structure is unchanged from the original
-single-species model. Extending this to a true hierarchical multi-species
-model (fitting all configured species jointly with shared priors) is a
+The season/year structure follows the config: each year holds the
+configured within-year seasons (\code{config$seasons}), initial occupancy is
+estimated at each year's first season, and the colonization/persistence
+transitions run between consecutive seasons within a year. Years are
+exchangeable draws around the hyper-means. (This dimension was hardcoded
+to one season per "year" until it was noticed that \code{mu.e.0}/\code{mu.g.0}
+posteriors were exactly their priors: with one season per year the
+transition loop never executed, and the dynamic part of the model was
+inert.) Extending this to a true hierarchical multi-species model is a
 deliberately separate follow-up.
 }
 \examples{

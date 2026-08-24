@@ -139,7 +139,9 @@ load_mcmc_list <- function(path) {
 #' @param fit an `mcmc.list` that tracked `Z`
 #' @param arrays the list returned by `build_detection_arrays()`
 #' @param config a config list, as returned by `load_config()`
-#' @return data.frame with columns `year`, `n_sites`, `naive_psi`, `modeled_psi`
+#' @return data.frame with one row per absolute season: columns `season`,
+#'   `year`, `n_sites`, `naive_psi`, `modeled_psi`. A season nothing surveyed
+#'   has `n_sites` 0 and `naive_psi` NA
 #' @seealso [evaluate_occupancy_model()], which calls this when `fit` tracked `Z`
 #' @keywords internal
 compare_naive_vs_modeled_occupancy <- function(fit, arrays, config) {
@@ -149,7 +151,9 @@ compare_naive_vs_modeled_occupancy <- function(fit, arrays, config) {
   spp3d_01[spp3d_01 > 1] <- 1
   dets <- spp3d_01[, 2:(max_survs + 1), ]
 
-  n.season <- 1
+  # the same season/year structure fit_occupancy_model() used, so Z[j, l, t]
+  # indices line up with the reshaped detections
+  n.season <- nrow(config$ssn_beg)
   n.year <- dim(dets)[3] / n.season
   dets4d <- array(dim = c(dim(dets)[1], dim(dets)[2], n.season, n.year), data = as.vector(dets))
 
@@ -158,17 +162,23 @@ compare_naive_vs_modeled_occupancy <- function(fit, arrays, config) {
   idx <- do.call(rbind, lapply(strsplit(sub("^Z\\[", "", sub("\\]$", "", z_cols)), ","), as.integer))
   z_post_mean <- colMeans(z_mat[, z_cols, drop = FALSE])
 
-  out <- data.frame(year = integer(0), n_sites = integer(0), naive_psi = double(0), modeled_psi = double(0))
+  # one row per absolute season - the same index the arrays, the config's
+  # season windows, and plot_detection_history() all use
+  out <- data.frame(season = integer(0), year = integer(0), n_sites = integer(0),
+                    naive_psi = double(0), modeled_psi = double(0))
   for (t in seq_len(n.year)) {
-    naive_z <- apply(dets4d[, , , t, drop = FALSE], MARGIN = 1, max, na.rm = TRUE)
-    naive_z <- naive_z[is.finite(naive_z)] # drop never-surveyed sites
-    year_idx <- which(idx[, 3] == t)
-    out <- rbind(out, data.frame(
-      year = t,
-      n_sites = length(naive_z),
-      naive_psi = mean(naive_z),
-      modeled_psi = mean(z_post_mean[year_idx])
-    ))
+    for (l in seq_len(n.season)) {
+      naive_z <- suppressWarnings(apply(dets4d[, , l, t, drop = FALSE], MARGIN = 1, max, na.rm = TRUE))
+      naive_z <- naive_z[is.finite(naive_z)] # drop never-surveyed sites
+      season_idx <- which(idx[, 2] == l & idx[, 3] == t)
+      out <- rbind(out, data.frame(
+        season = (t - 1) * n.season + l,
+        year = t,
+        n_sites = length(naive_z),
+        naive_psi = if (length(naive_z)) mean(naive_z) else NA_real_,
+        modeled_psi = mean(z_post_mean[season_idx])
+      ))
+    }
   }
   out
 }

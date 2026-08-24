@@ -10,10 +10,15 @@
 #' process independently gets zero or more covariates, fed by
 #' `average_covariates.R`'s per-site/per-season/year arrays.
 #'
-#' The "each array slice along the 3rd dimension is treated as its own year,
-#' with numseasons fixed at 1" structure is unchanged from the original
-#' single-species model. Extending this to a true hierarchical multi-species
-#' model (fitting all configured species jointly with shared priors) is a
+#' The season/year structure follows the config: each year holds the
+#' configured within-year seasons (`config$seasons`), initial occupancy is
+#' estimated at each year's first season, and the colonization/persistence
+#' transitions run between consecutive seasons within a year. Years are
+#' exchangeable draws around the hyper-means. (This dimension was hardcoded
+#' to one season per "year" until it was noticed that `mu.e.0`/`mu.g.0`
+#' posteriors were exactly their priors: with one season per year the
+#' transition loop never executed, and the dynamic part of the model was
+#' inert.) Extending this to a true hierarchical multi-species model is a
 #' deliberately separate follow-up.
 #'
 #' @param arrays the list returned by `build_detection_arrays()`
@@ -78,8 +83,20 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
   jday <- jday3d[, 2:(max_survs + 1), ]
   eff <- effort3d[, 2:(max_survs + 1), ]
 
-  # count seasons, sites, years, visits
-  numseasons <- 1
+  # count seasons, sites, years, visits. Seasons-per-year comes from the
+  # config's seasons list: the detection arrays' 3rd dimension is the
+  # absolute season index (makeSeasons() numbers seasons within year fastest),
+  # so reshaping to [site, visit, season, year] puts consecutive within-year
+  # seasons on the transition dimension. This was hardcoded to 1 season per
+  # "year" for a long time, which silently disabled the colonization/
+  # persistence part of the model: the l-in-2:n.season loop never ran, and
+  # mu.e.0/mu.g.0 came back as exactly their dnorm(0, 0.1) priors.
+  numseasons <- nrow(config$ssn_beg)
+  if (dim(dets)[3] %% numseasons != 0) {
+    stop("The detection arrays hold ", dim(dets)[3], " seasons, which is not a ",
+         "whole number of years of the config's ", numseasons, " season(s) per ",
+         "year - were arrays built with a different config than this one?")
+  }
   n.season <- numseasons
   n.site <- dim(dets)[1]
   n.year <- dim(dets)[3] / numseasons
@@ -121,10 +138,10 @@ fit_occupancy_model <- function(arrays, config, occ_covariates = NULL) {
       # matrix with the wrong number of columns for this run's season/year
       # structure would get silently misaligned across sites/years rather
       # than erroring, and the model would fit "successfully" on wrong data.
-      if (!is.matrix(mat) || nrow(mat) != n.site || ncol(mat) != n.year) {
+      if (!is.matrix(mat) || nrow(mat) != n.site || ncol(mat) != n.season * n.year) {
         stop("occ_covariates[[\"", cov_names[c_idx], "\"]] has shape [",
              if (is.matrix(mat)) paste(nrow(mat), "x", ncol(mat)) else class(mat)[1],
-             "] but must be a [", n.site, " x ", n.year,
+             "] but must be a [", n.site, " x ", n.season * n.year,
              "] matrix (num_cells x num_ssn) to match this run's grid and season/year ",
              "structure. average_covariates() builds a matrix in exactly this shape - ",
              "check it was called with this same arrays$area_grid_sf and the right windows.")

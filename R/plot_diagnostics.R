@@ -112,15 +112,20 @@ plot_sightings <- function(arrays, species, season = NULL, main = NULL, ...) {
 #'   one
 #' @param arrays the list returned by `build_detection_arrays()` (must be the
 #'   same one `fit` was fit against, so sites/grid cells line up)
-#' @param year which year to show; defaults to the last year tracked in `fit`
+#' @param season which absolute season to show (the same index
+#'   `plot_detection_history()`, `season_windows_from_config()`, and the
+#'   detection arrays use); defaults to the last season tracked in `fit`
 #' @param stat `"mean"` (the default) or `"sd"`: the posterior mean of `Z` is
 #'   the occupancy map, and its posterior SD is the uncertainty map - a cell
 #'   the chains never agree on shows up bright in `"sd"` and unremarkable in
 #'   `"mean"`
-#' @param main plot title; auto-generated from `year`/`stat` if `NULL`
+#' @param main plot title; auto-generated from `season`/`stat` if `NULL`
 #' @param ... passed on to `plot()`
+#' @param year deprecated older name for `season`, kept so existing calls
+#'   keep working - it always meant the arrays' 3rd-dimension index, which is
+#'   the absolute season
 #' @return invisibly, `arrays$area_grid_sf` with an `occupancy` column added
-#'   (posterior mean or SD of `Z` for the chosen year, per `stat`)
+#'   (posterior mean or SD of `Z` for the chosen season, per `stat`)
 #' @seealso [plot_survey_coverage()], [plot_sightings()], [plot_covariate_map()],
 #'   [plot_process_map()] for the fitted psi/phi/gamma surfaces of a
 #'   `"colext"` fit (which tracks no `Z` to map),
@@ -131,12 +136,13 @@ plot_sightings <- function(arrays, species, season = NULL, main = NULL, ...) {
 #' \dontrun{
 #' fit <- fit_occupancy_model(arrays, config) # config$jags$params must be "Z"
 #' plot_occupancy_map(fit, arrays)
-#' plot_occupancy_map(fit, arrays, year = 2)
+#' plot_occupancy_map(fit, arrays, season = 2)
 #' }
 #' @export
-plot_occupancy_map <- function(fit, arrays, year = NULL, stat = c("mean", "sd"),
-                               main = NULL, ...) {
+plot_occupancy_map <- function(fit, arrays, season = NULL, stat = c("mean", "sd"),
+                               main = NULL, ..., year = NULL) {
   stat <- match.arg(stat)
+  if (is.null(season) && !is.null(year)) season <- year
   if (is.character(fit)) {
     fit <- load_mcmc_list(fit)
   }
@@ -157,22 +163,26 @@ plot_occupancy_map <- function(fit, arrays, year = NULL, stat = c("mean", "sd"),
     colMeans(z_mat[, z_cols, drop = FALSE])
   }
 
-  years_available <- sort(unique(idx[, 3]))
-  if (is.null(year)) {
-    year <- max(years_available)
-  } else if (!(year %in% years_available)) {
-    stop("year must be one of: ", paste(years_available, collapse = ", "))
+  # Z is indexed [site, within-year season, year]; fold the last two into the
+  # absolute season index the rest of this package speaks
+  n_within <- max(idx[, 2])
+  abs_season <- (idx[, 3] - 1) * n_within + idx[, 2]
+  seasons_available <- sort(unique(abs_season))
+  if (is.null(season)) {
+    season <- max(seasons_available)
+  } else if (!(season %in% seasons_available)) {
+    stop("season must be one of: ", paste(seasons_available, collapse = ", "))
   }
 
-  year_rows <- which(idx[, 3] == year)
-  occ_by_site <- setNames(z_post_mean[year_rows], idx[year_rows, 1])
+  season_rows <- which(abs_season == season)
+  occ_by_site <- setNames(z_post_mean[season_rows], idx[season_rows, 1])
 
   grid <- arrays$area_grid_sf
   grid$occupancy <- unname(occ_by_site[as.character(grid$grid_id)])
 
   if (is.null(main)) {
-    main <- paste0(if (stat == "sd") "Posterior occupancy SD (year " else "Posterior occupancy (year ",
-                   year, ")")
+    main <- paste0(if (stat == "sd") "Posterior occupancy SD (season " else "Posterior occupancy (season ",
+                   season, ")")
   }
   plot(grid["occupancy"], main = main, ...)
   invisible(grid)

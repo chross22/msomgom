@@ -1,5 +1,29 @@
 # dynocc (development version)
 
+* **The colonization/persistence dynamics now actually engage.** The
+  season/year structure was hardcoded to one season per "year", so the model
+  treated every season as an independent year, the transition loop
+  (`l in 2:n.season`) never executed, and `mu.e.0`/`mu.g.0` came back as
+  exactly their `dnorm(0, 0.1)` priors - sd 3.16, ESS = every draw - on every
+  fit this package has ever produced. The 4-D `[site, visit, season, year]`
+  machinery was built for the real structure and had simply never been fed
+  it: seasons-per-year now comes from `config$seasons`, initial occupancy is
+  estimated at each year's first season, transitions run between consecutive
+  within-year seasons, and years are exchangeable draws around the
+  hyper-means. On a fixture fit the phi/gamma posteriors now visibly tighten
+  away from the prior. Anything fit before this change was a set of
+  independent single-season occupancy models sharing hyper-priors, whatever
+  the parameter names said - refit.
+
+* With real within-year seasons, `Z` is indexed `[site, season, year]`, so
+  `plot_occupancy_map()` and `compare_naive_vs_modeled_occupancy()` now speak
+  the absolute season index used everywhere else (the arrays' 3rd dimension,
+  `plot_detection_history()`'s columns, `season_windows_from_config()`'s
+  rows). `plot_occupancy_map()`'s argument is `season`; `year` still works as
+  a deprecated alias, since it always meant that same index. The
+  naive-vs-modeled table gains a `season` column and reports one row per
+  season rather than per year.
+
 * **The month filter is a range, and it can wrap the year.** It used to be
   equality against the two endpoints - indistinguishable from a range when
   they are adjacent, which the original Aug/Sep analysis's were, and silently

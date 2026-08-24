@@ -132,7 +132,7 @@ plot_detection_history(arrays, "RIWH")
 # per cell, spatially - the payoff visualization for an occupancy model.
 fit <- fit_occupancy_model(arrays, config)             # config$jags$params: "Z"
 plot_occupancy_map(fit, arrays)
-plot_occupancy_map(fit, arrays, year = 2)
+plot_occupancy_map(fit, arrays, season = 2)
 
 # A covariate that's NA everywhere, constant, or spatially implausible is
 # much faster to catch here than after a fit quietly does nothing with it.

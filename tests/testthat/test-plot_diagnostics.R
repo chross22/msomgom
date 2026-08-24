@@ -293,6 +293,6 @@ test_that("plot_occupancy_map stat = 'sd' maps the posterior SD of Z", {
   m <- matrix(rbinom(200 * n_cells, 1, 0.5), ncol = n_cells, dimnames = list(NULL, cols))
   fit <- coda::mcmc.list(coda::mcmc(m), coda::mcmc(m))
 
-  grid <- plot_occupancy_map(fit, arrays, year = 1, stat = "sd")
+  grid <- plot_occupancy_map(fit, arrays, season = 1, stat = "sd")
   expect_equal(grid$occupancy, unname(apply(rbind(m, m), 2, sd)))
 })

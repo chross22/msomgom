@@ -83,11 +83,13 @@ test_that("plot_occupancy_map's occupancy column matches a hand-computed posteri
   arrays <- build_detection_arrays(prep$tmpdat, prep$season_info, config)
   fit <- fit_occupancy_model(arrays, config)
 
-  grid <- plot_occupancy_map(fit, arrays, year = 1)
+  grid <- plot_occupancy_map(fit, arrays, season = 1)
   expect_s3_class(grid, "sf")
 
   z_mat <- as.matrix(fit)
-  z_cols <- grep("^Z\\[.*,1\\]$", colnames(z_mat), value = TRUE) # year 1 only
+  # season 1 = within-year season 1 of year 1; year 1 alone now holds two
+  # within-year seasons, so match both trailing indices, not just the year
+  z_cols <- grep("^Z\\[[0-9]+,1,1\\]$", colnames(z_mat), value = TRUE)
   expected <- colMeans(z_mat[, z_cols, drop = FALSE])
   expect_equal(sort(unname(grid$occupancy)), sort(unname(expected)))
 })

@@ -7,10 +7,11 @@
 plot_occupancy_map(
   fit,
   arrays,
-  year = NULL,
+  season = NULL,
   stat = c("mean", "sd"),
   main = NULL,
-  ...
+  ...,
+  year = NULL
 )
 }
 \arguments{
@@ -21,20 +22,26 @@ one}
 \item{arrays}{the list returned by \code{build_detection_arrays()} (must be the
 same one \code{fit} was fit against, so sites/grid cells line up)}
 
-\item{year}{which year to show; defaults to the last year tracked in \code{fit}}
+\item{season}{which absolute season to show (the same index
+\code{plot_detection_history()}, \code{season_windows_from_config()}, and the
+detection arrays use); defaults to the last season tracked in \code{fit}}
 
 \item{stat}{\code{"mean"} (the default) or \code{"sd"}: the posterior mean of \code{Z} is
 the occupancy map, and its posterior SD is the uncertainty map - a cell
 the chains never agree on shows up bright in \code{"sd"} and unremarkable in
 \code{"mean"}}
 
-\item{main}{plot title; auto-generated from \code{year}/\code{stat} if \code{NULL}}
+\item{main}{plot title; auto-generated from \code{season}/\code{stat} if \code{NULL}}
 
 \item{...}{passed on to \code{plot()}}
+
+\item{year}{deprecated older name for \code{season}, kept so existing calls
+keep working - it always meant the arrays' 3rd-dimension index, which is
+the absolute season}
 }
 \value{
 invisibly, \code{arrays$area_grid_sf} with an \code{occupancy} column added
-(posterior mean or SD of \code{Z} for the chosen year, per \code{stat})
+(posterior mean or SD of \code{Z} for the chosen season, per \code{stat})
 }
 \description{
 Plots posterior mean occupancy (the latent state \code{Z}) per grid cell for
@@ -47,7 +54,7 @@ numbers as a per-year table; this puts them on the map instead.
 \dontrun{
 fit <- fit_occupancy_model(arrays, config) # config$jags$params must be "Z"
 plot_occupancy_map(fit, arrays)
-plot_occupancy_map(fit, arrays, year = 2)
+plot_occupancy_map(fit, arrays, season = 2)
 }
 }
 \seealso{
