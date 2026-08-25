@@ -1,5 +1,23 @@
 # dynocc (development version)
 
+* **`occupancy_summary()`**: a fit, read rather than reported. The
+  logit-scale hyper-means become probabilities (transforming the draws, not
+  the summaries), and the questions a dynamic occupancy model is actually
+  asked get answered - equilibrium occupancy `gamma / (gamma + (1 - phi))`,
+  turnover, and the chance of at least one detection across a season's
+  visits, which is what says how far naive occupancy understates the truth.
+  Detection slopes and covariate coefficients stay in log-odds per standard
+  deviation, because a slope is not a probability and the covariates were
+  standardized before fitting.
+
+  It also reports **prior contraction** per parameter,
+  `1 - sd(posterior) / sd(prior)`, and refuses to present anything below a
+  threshold as an estimate. A posterior that is still its prior is the one
+  failure mode that looks like flawless convergence - Rhat 1.00, every draw
+  effective, because sampling a prior is easy - and it is exactly what hid
+  the inert colonization/persistence dynamics through every fit this package
+  had produced.
+
 * A covariate recipe's derive steps are now filled and typo-checked exactly
   like its source function, which makes bathymetry reachable from a config:
   a step taking `bathy` - `datamatch::attach_bathymetry()`, the way `DEPTH`

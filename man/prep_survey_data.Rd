@@ -73,6 +73,7 @@ Other pipeline stages:
 \code{\link[=fit_occupancy_model]{fit_occupancy_model()}},
 \code{\link[=load_config]{load_config()}},
 \code{\link[=makeSeasons]{makeSeasons()}},
+\code{\link[=occupancy_summary]{occupancy_summary()}},
 \code{\link[=padstr0]{padstr0()}},
 \code{\link[=run_occupancy_model]{run_occupancy_model()}},
 \code{\link[=standardize_survey_columns]{standardize_survey_columns()}}

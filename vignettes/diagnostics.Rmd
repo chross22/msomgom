@@ -40,6 +40,22 @@ posterior), trace/density plots saved to `<output_dir>/mcmc_diagnostics.pdf`, an
 when the model was run with `jags.params: Z`, a naive-vs-modeled occupancy
 comparison per year.
 
+`occupancy_summary()` reads the fit rather than reporting it: the
+logit-scale hyper-means converted to probabilities, the quantities a dynamic
+occupancy model is actually asked for (equilibrium occupancy, turnover, the
+chance of detecting the species at least once across a season's visits), and
+a contraction check on every parameter:
+
+```r
+occupancy_summary(fit, arrays)
+```
+
+That last part is the one to read first. `contraction` is how far a
+posterior moved from its prior; near zero means the data never informed the
+parameter, and such a parameter arrives looking *perfectly* converged --
+Rhat 1.00, every draw effective -- because sampling a prior is easy. It is
+flagged rather than reported.
+
 `plot_convergence()` draws the same two diagnostics it warns about - one point
 per parameter, Rhat against effective sample size, thresholds marked, and the
 parameters outside them labeled by name:
