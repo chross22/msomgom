@@ -58,7 +58,10 @@ Other diagnostic plots:
 \code{\link[=plot_covariate_map]{plot_covariate_map()}},
 \code{\link[=plot_detection_history]{plot_detection_history()}},
 \code{\link[=plot_occupancy_map]{plot_occupancy_map()}},
+\code{\link[=plot_occupancy_trend]{plot_occupancy_trend()}},
+\code{\link[=plot_prior_posterior]{plot_prior_posterior()}},
 \code{\link[=plot_process_map]{plot_process_map()}},
+\code{\link[=plot_season_panels]{plot_season_panels()}},
 \code{\link[=plot_sightings]{plot_sightings()}},
 \code{\link[=plot_survey_coverage]{plot_survey_coverage()}}
 }

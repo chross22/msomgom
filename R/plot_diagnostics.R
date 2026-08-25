@@ -43,8 +43,9 @@ plot_survey_coverage <- function(arrays, season = NULL, main = NULL, ...) {
   if (is.null(main)) {
     main <- if (is.null(season)) "Survey coverage (all seasons)" else paste0("Survey coverage (season ", season, ")")
   }
-  plot(grid["n_surveys"], main = main, ...)
-  invisible(grid)
+  fig <- draw_grid_map(grid, "n_surveys", kind = "surface", main = main,
+                       label = "Surveys", ...)
+  with_plot(grid, fig)
 }
 
 #' Map sighting counts across the study grid
@@ -95,8 +96,9 @@ plot_sightings <- function(arrays, species, season = NULL, main = NULL, ...) {
   if (is.null(main)) {
     main <- paste0(species, " sightings", if (is.null(season)) " (all seasons)" else paste0(" (season ", season, ")"))
   }
-  plot(grid["n_sightings"], main = main, ...)
-  invisible(grid)
+  fig <- draw_grid_map(grid, "n_sightings", kind = "surface", main = main,
+                       label = "Sightings", ...)
+  with_plot(grid, fig)
 }
 
 #' Map posterior occupancy probability across the study grid
@@ -184,8 +186,14 @@ plot_occupancy_map <- function(fit, arrays, season = NULL, stat = c("mean", "sd"
     main <- paste0(if (stat == "sd") "Posterior occupancy SD (season " else "Posterior occupancy (season ",
                    season, ")")
   }
-  plot(grid["occupancy"], main = main, ...)
-  invisible(grid)
+  # Occupancy is a probability and its SD is not, so they get different
+  # scales: a 0-1 scale on the mean says where 0.6 sits between the ends of
+  # the range it could occupy, which a data-driven scale hides.
+  fig <- draw_grid_map(grid, "occupancy",
+                       kind = if (stat == "sd") "surface" else "probability",
+                       main = main,
+                       label = if (stat == "sd") "SD" else "Occupancy", ...)
+  with_plot(grid, fig)
 }
 
 #' Map a covariate across the study grid
@@ -254,8 +262,9 @@ plot_covariate_map <- function(cov, arrays, window = NULL, var_name = NULL, main
     var_label <- if (!is.null(var_name)) var_name else "covariate"
     main <- paste0(var_label, " (", label, ")")
   }
-  plot(grid["covariate"], main = main, ...)
-  invisible(grid)
+  fig <- draw_grid_map(grid, "covariate", kind = "surface", main = main,
+                       label = var_name %||% "Covariate", ...)
+  with_plot(grid, fig)
 }
 
 #' Plot the detection history the model actually sees

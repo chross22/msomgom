@@ -199,6 +199,11 @@ plot_process_map <- function(fit, arrays, process = c("psi", "phi", "gamma"),
                      ", so every cell is identical")
     }
   }
-  plot(grid[stat], main = main, ...)
-  invisible(grid)
+  # The mean is a probability; its posterior SD is not, so it gets a
+  # positive-surface scale rather than a 0-1 one.
+  fig <- draw_grid_map(grid, stat,
+                       kind = if (stat == "sd") "surface" else "probability",
+                       main = main,
+                       label = if (stat == "sd") "Posterior SD" else process, ...)
+  with_plot(grid, fig)
 }

@@ -1,5 +1,39 @@
 # dynocc (development version)
 
+* **The maps are drawn by `fancymaps` when it is installed.** Every map
+  diagnostic was sf's default `plot()`: the geometry, a rainbow, and nothing
+  a reader needs to navigate one - no land, no projection, no scale bar, no
+  legend title, and a colour scale chosen by the data rather than by the
+  quantity. They now go through `fancymaps`, which was built for exactly
+  these quantities: `map_probability()` for occupancy, persistence and
+  colonization, which are bounded at 0 and 1 and should be read against
+  those ends rather than against their own range, and `map_surface()` for
+  effort, counts and covariates. A posterior SD is deliberately drawn on a
+  positive-surface scale rather than a probability one, because it is not a
+  probability. `fancymaps` stays a `Suggests`: without it every map still
+  draws in base graphics, plainer rather than absent.
+
+* Map functions still return their underlying data invisibly - so a figure
+  can be checked numerically rather than by eye - and now carry the `ggplot`
+  along as a `"plot"` attribute, for theming, faceting or `ggsave()`.
+
+* **Three new diagnostics.** `plot_occupancy_trend()` draws occupancy across
+  seasons with its credible band and the naive series beside it; the gap
+  between them is the detection correction, which is the reason to fit an
+  occupancy model rather than count cells with sightings in them. It
+  summarizes the per-draw occupied share rather than averaging per-cell
+  posterior means, which would discard the between-cell correlation and give
+  a band that is far too narrow. `plot_prior_posterior()` overlays each
+  parameter's posterior on the prior it started from - the check no
+  convergence diagnostic can make, since a parameter the data never informed
+  samples beautifully. `plot_season_panels()` draws every season as small
+  multiples on one shared scale via `fancymaps::map_panels()`, because
+  panels drawn separately cannot be compared: each gets its own scale, and a
+  cell that looks dark in June and light in July may be identical in both.
+
+* Non-map figures use `fancyfx`'s theme and palette, so a dynocc diagnostic
+  sits beside a `fancyfx` effect curve without a change of visual language.
+
 * `generate_mock_data()` writes a fixture that satisfies the config it was
   generated from. `PLATFORM`, the `FILEID` prefix and the on-effort `LEGTYPE`
   codes now come from `survey.platform_code`/`fileid_prefixes`/

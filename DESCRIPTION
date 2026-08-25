@@ -35,6 +35,8 @@ Suggests:
     dclone,
     derivoce,
     fancyfx,
+    fancymaps,
+    ggplot2,
     googledrive,
     knitr,
     mapview,
@@ -50,6 +52,7 @@ Remotes:
     chross22/datamatch,
     chross22/derivoce,
     chross22/fancyfx,
+    chross22/fancymaps,
     chross22/narwcr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
