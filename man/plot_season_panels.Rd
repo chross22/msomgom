@@ -11,6 +11,7 @@ plot_season_panels(
   species = NULL,
   kind = c("surface", "probability"),
   seasons = NULL,
+  label = NULL,
   title = NULL
 )
 }
@@ -30,6 +31,10 @@ from \code{x} when \code{x} is itself an arrays list}
 one}
 
 \item{seasons}{which seasons to draw; \code{NULL} (the default) draws them all}
+
+\item{label}{what to call the quantity in the shared legend. Supplying one
+is what makes the legend shared: without it each panel names its own
+scale, and one scale drawn per panel reads as several scales}
 
 \item{title}{figure title}
 }

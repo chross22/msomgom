@@ -221,6 +221,9 @@ plot_prior_posterior <- function(fit, parameters = NULL, prior_sd = NULL) {
 #' @param kind `"surface"` for a positive quantity, `"probability"` for a 0-1
 #'   one
 #' @param seasons which seasons to draw; `NULL` (the default) draws them all
+#' @param label what to call the quantity in the shared legend. Supplying one
+#'   is what makes the legend shared: without it each panel names its own
+#'   scale, and one scale drawn per panel reads as several scales
 #' @param title figure title
 #' @return invisibly, the `sf` grid carrying one column per drawn season, with
 #'   the `ggplot` attached as the `"plot"` attribute
@@ -237,7 +240,7 @@ plot_season_panels <- function(x, arrays = NULL,
                                what = c("coverage", "sightings"),
                                species = NULL,
                                kind = c("surface", "probability"),
-                               seasons = NULL, title = NULL) {
+                               seasons = NULL, label = NULL, title = NULL) {
   if (!requireNamespace("fancymaps", quietly = TRUE)) {
     stop("The 'fancymaps' package is required for small multiples on a shared ",
          "scale. Install it with remotes::install_github('chross22/fancymaps'), ",
@@ -262,6 +265,7 @@ plot_season_panels <- function(x, arrays = NULL,
     }
     title <- title %||% if (what == "coverage") "Survey coverage by season" else
       paste0("Sightings by season (", species, ")")
+    label <- label %||% if (what == "coverage") "Surveys" else "Sightings"
   } else {
     if (is.null(arrays)) {
       stop("`arrays` is required when `x` is a matrix - the grid to draw it ",
@@ -269,6 +273,7 @@ plot_season_panels <- function(x, arrays = NULL,
     }
     mat <- as.matrix(x)
     title <- title %||% "By season"
+    label <- label %||% "Value"
   }
 
   if (nrow(mat) != nrow(arrays$area_grid_sf)) {
@@ -286,8 +291,11 @@ plot_season_panels <- function(x, arrays = NULL,
   columns <- paste0("season ", seasons)
   for (i in seq_along(seasons)) grid[[columns[i]]] <- mat[, seasons[i]]
 
+  # `label` is what makes the legend shared - fancymaps falls back to each
+  # panel's own label otherwise, and a scale drawn once per panel reads as
+  # one scale per panel, which is the comparison this figure exists to make.
   fig <- fancymaps::map_panels(grid, values = columns, kind = kind,
-                               title = title)
+                               label = label, title = title)
   print(fig)
   with_plot(grid, fig)
 }
