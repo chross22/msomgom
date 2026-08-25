@@ -73,6 +73,16 @@ generate_mock_data <- function(config_path, out_path = NULL,
   lon_range <- range(poly[, 1])
   lat_range <- range(poly[, 2])
 
+  # The fixture must satisfy the config it was generated from, or `source:
+  # fixture` stops being the escape hatch it exists to be: a config edited to
+  # describe a real survey (platform "aerial", FILEID prefix "f") would
+  # generate NARWC-convention mock data its own filters then drop entirely.
+  # These are taken from the config, and only fall back to the NARWC defaults
+  # when it says nothing.
+  platform <- raw$survey$platform_code %||% 99
+  fileid_prefix <- unlist(raw$survey$fileid_prefixes)[1] %||% NA
+  on_effort <- unlist(raw$survey$on_effort_legtypes) %||% c(5, 6)
+
   years <- raw$dates$beg_year:raw$dates$end_year
   # One batch of surveys per configured SEASON, which is what
   # `surveys_per_season` has claimed all along. This used to take the two
@@ -92,7 +102,11 @@ generate_mock_data <- function(config_path, out_path = NULL,
 
   for (yr in years) {
     yy <- sprintf("%02d", yr %% 100)
-    prefix_letter <- if (yr >= 2000) "p" else "P" # NARWC convention: lower-case FILEID prefix from year 2000 on
+    # NARWC convention is a lower-case FILEID prefix from 2000 on, but a
+    # config naming its own prefixes wins - the fixture has to pass them.
+    prefix_letter <- if (!is.na(fileid_prefix)) {
+      fileid_prefix
+    } else if (yr >= 2000) "p" else "P"
 
     for (mo in months) {
       for (s in seq_len(surveys_per_season)) {
@@ -108,7 +122,9 @@ generate_mock_data <- function(config_path, out_path = NULL,
         lat0 <- runif(1, lat_range[1], lat_range[2])
         dlon <- runif(1, -1, 1) * 0.01
         dlat <- runif(1, -1, 1) * 0.01
-        legtype <- sample(c(5, 6), 1) # ship underway vs. not underway (listening station)
+        # On-effort codes come from the config too (NARWC's POP-ship 5/6 by
+        # default), so the fixture survives its own on-effort filter.
+        legtype <- if (length(on_effort) > 1) sample(on_effort, 1) else on_effort
 
         for (pt in seq_len(points_per_survey)) {
           t <- t0 + (pt - 1) * 300 # ~5-minute fixes, matches the handbook's shipboard recording interval
@@ -117,7 +133,7 @@ generate_mock_data <- function(config_path, out_path = NULL,
           legstage <- if (pt == 1) 1 else if (pt == points_per_survey) 5 else 2
 
           rows[[length(rows) + 1]] <- data.frame(
-            FILEID = fileid, EVENTNO = pt * 10, PLATFORM = 99,
+            FILEID = fileid, EVENTNO = pt * 10, PLATFORM = platform,
             MONTH = as.numeric(format(t, "%m")), DAY = as.numeric(format(t, "%d")), YEAR = as.numeric(format(t, "%Y")),
             TIME = as.numeric(format(t, "%H%M%S")),
             LATITUDE = lat, LONGITUDE = lon,
@@ -134,7 +150,7 @@ generate_mock_data <- function(config_path, out_path = NULL,
             spp <- sample(c(target_species, decoy_species_pool), 1,
                            prob = c(rep(2, length(target_species)), rep(1, length(decoy_species_pool))))
             rows[[length(rows) + 1]] <- data.frame(
-              FILEID = fileid, EVENTNO = pt * 10 + 5, PLATFORM = 99,
+              FILEID = fileid, EVENTNO = pt * 10 + 5, PLATFORM = platform,
               MONTH = as.numeric(format(t, "%m")), DAY = as.numeric(format(t, "%d")), YEAR = as.numeric(format(t, "%Y")),
               TIME = as.numeric(format(t + 20, "%H%M%S")),
               LATITUDE = lat + rnorm(1, 0, 0.001), LONGITUDE = lon + rnorm(1, 0, 0.001),
@@ -161,8 +177,10 @@ generate_mock_data <- function(config_path, out_path = NULL,
     decoy_idx <- sample(seq_len(nrow(dat)), n_decoy)
     decoys <- dat[decoy_idx, ]
     make_wrong_platform <- decoy_idx %% 2 == 0
-    decoys$PLATFORM[make_wrong_platform] <- 107 # Silver (WCNE), a different whale-watch vessel
-    decoys$FILEID[!make_wrong_platform] <- sub("^[Pp]", "O", decoys$FILEID[!make_wrong_platform])
+    # A decoy has to be something the configured filters actually reject, so
+    # both are derived from the config rather than hardcoded to NARWC's.
+    decoys$PLATFORM[make_wrong_platform] <- paste0(platform, "_decoy")
+    decoys$FILEID[!make_wrong_platform] <- paste0("decoy_", decoys$FILEID[!make_wrong_platform])
     dat <- rbind(dat, decoys)
   }
 

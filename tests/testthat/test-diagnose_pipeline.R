@@ -36,7 +36,15 @@ test_that("diagnose_pipeline reaches config/prep/arrays and reports ok on a heal
 })
 
 test_that("diagnose_pipeline reports FAIL when the data filters leave nothing", {
-  path <- make_healthy_config("diagnose_zero_rows", platform_code = 12345) # matches nothing in the mock data
+  # The mock generator now follows the config's own filters, so a mismatch
+  # can no longer be made by setting one - which is the point: `source:
+  # fixture` has to work for any config. A real mismatch is data written
+  # under one convention read under another, so that is what this builds:
+  # generate against the defaults, then move the platform out from under it.
+  path <- make_healthy_config("diagnose_zero_rows")
+  config_yaml <- yaml::read_yaml(path)
+  config_yaml$survey$platform_code <- 12345 # nothing in the written data
+  yaml::write_yaml(config_yaml, path)
 
   out <- capture.output(result <- diagnose_pipeline(path))
   report <- paste(out, collapse = "\n")

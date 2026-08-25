@@ -33,8 +33,11 @@ test_that("mock data includes decoy records the pipeline's filters should drop",
   on.exit(unlink(out_path))
 
   dat <- read.csv(out_path, na.strings = "")
+  # Decoys are derived from the configured platform and prefix rather than
+  # hardcoded to NARWC's, so that they are still something the *configured*
+  # filters reject whatever those filters are.
   expect_true(any(dat$PLATFORM != 99))
-  expect_true(any(grepl("^O", dat$FILEID)))
+  expect_true(any(grepl("^decoy_", dat$FILEID)))
 })
 
 test_that("generate_mock_data is reproducible given the same seed", {
@@ -59,4 +62,27 @@ test_that("all mock sightings use species drawn from the configured codes plus d
   sightings <- dat[!is.na(dat$SPECCODE), ]
   expect_true(all(sightings$SPECCODE %in% c("RIWH", "HUWH", "FIWH", "MIWH", "HAPO")))
   expect_true("RIWH" %in% sightings$SPECCODE) # the configured target species should appear
+})
+
+test_that("the fixture satisfies the filters of the config it came from", {
+  # `source: fixture` is the escape hatch for testing wiring without data, so
+  # it has to work for a config edited to describe a real survey - not only
+  # for one still carrying the NARWC defaults.
+  configs_dir <- withr::local_tempdir()
+  project_dir <- withr::local_tempdir()
+  path <- generate_config(
+    "custom_survey", configs_dir = configs_dir, project_dir = project_dir,
+    data_file = "data/mock.csv",
+    beg_year = 2025, end_year = 2025, beg_month = 8, end_month = 9,
+    platform_code = "aerial", fileid_prefixes = "f", on_effort_legtypes = 2
+  )
+  generate_mock_data(path, surveys_per_season = 2, points_per_survey = 8, seed = 7)
+  config <- load_config(path)
+
+  prep <- prep_survey_data(config)
+
+  expect_gt(nrow(prep$tmpdat), 0)
+  expect_true(all(prep$tmpdat$PLATFORM == "aerial"))
+  expect_true(all(substr(prep$tmpdat$FILEID, 1, 1) == "f"))
+  expect_true(any(prep$tmpdat$on.off.eff == 1))
 })

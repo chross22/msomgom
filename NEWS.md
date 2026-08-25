@@ -1,5 +1,15 @@
 # dynocc (development version)
 
+* `generate_mock_data()` writes a fixture that satisfies the config it was
+  generated from. `PLATFORM`, the `FILEID` prefix and the on-effort `LEGTYPE`
+  codes now come from `survey.platform_code`/`fileid_prefixes`/
+  `on_effort_legtypes` rather than being hardcoded to NARWC's POP-ship
+  conventions, and the decoy records are derived from those too, so they
+  remain something the *configured* filters reject. Without this, a config
+  edited to describe a real survey generated mock data its own filters then
+  dropped entirely - which broke the one thing the fixture exists for, which
+  is running the pipeline end to end without data.
+
 * **`occupancy_summary()`**: a fit, read rather than reported. The
   logit-scale hyper-means become probabilities (transforming the draws, not
   the summaries), and the questions a dynamic occupancy model is actually
